@@ -63,3 +63,5 @@ evals/results.json
 # --- logs ---
 *.log
 logs/
+
+docs/
