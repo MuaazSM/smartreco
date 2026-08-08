@@ -21,6 +21,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from qdrant_client import AsyncQdrantClient
 
+from app.api.routes.auth import router as auth_router
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger, set_run_id
 from app.db.qdrant_bootstrap import bootstrap_qdrant
@@ -79,6 +80,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(auth_router)
 
 
 def _asyncpg_dsn(database_url: str) -> str:
