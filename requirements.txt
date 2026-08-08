@@ -1,0 +1,58 @@
+# SmartReco backend dependencies.
+# CI critical check: this file must list a web framework (fastapi) and an LLM client (openai).
+# Every LLM/embedding call goes through app/llm/mesh.py using the `openai` client pointed at
+# Mesh API (https://api.meshapi.ai/v1) — see CLAUDE.md invariant #1. No other provider SDK
+# (groq, openrouter, anthropic, google-generativeai, together, sentence-transformers, fastembed)
+# may appear here; tests/test_single_gateway.py enforces this.
+
+# --- web framework (required, critical CI check) ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20        # form parsing for auth endpoints
+
+# --- LLM client (required, critical CI check) ---
+openai==1.59.6                  # the only LLM client SDK; always pointed at Mesh's base_url
+
+# --- database / migrations ---
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+
+# --- config / schemas ---
+pydantic==2.10.4
+pydantic-settings==2.7.1
+python-dotenv==1.0.1            # loads .env for pydantic-settings in local dev
+
+# --- agent orchestration ---
+langgraph==0.2.62
+langchain-core==0.3.28
+
+# --- vector store ---
+qdrant-client==1.12.1
+
+# --- cache / locks / rate limiting ---
+redis==5.2.1
+
+# --- resilience ---
+tenacity==9.0.0                 # exponential backoff on Mesh 429/5xx
+
+# --- scheduling ---
+apscheduler==3.11.0              # 5s outbox drain + digest/drift jobs
+
+# --- auth ---
+passlib[bcrypt]==1.7.4           # bcrypt cost-12 password hashing
+pyjwt==2.10.1                    # HS256 JWT
+
+# --- hybrid retrieval ---
+rank-bm25==0.2.2                 # lexical BM25 leg — not an AI model, no invariant #7 conflict
+numpy==2.2.1                     # MMR / decayed-centroid vector math
+
+# --- email templates (digest, bonus) ---
+jinja2==3.1.5
+
+# --- http client (health checks, TestClient) ---
+httpx==0.28.1
+
+# --- tests ---
+pytest==8.3.4
+pytest-asyncio==0.25.1

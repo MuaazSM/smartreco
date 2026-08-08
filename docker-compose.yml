@@ -1,0 +1,69 @@
+name: smartreco
+
+# `docker compose up -d` is the ONLY setup command for local infra (postgres + qdrant + redis).
+# App/env vars come from `.env` (copy `.env.example` first). See CLAUDE.md and PRD §13.4.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: smartreco_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-smartreco}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smartreco_local_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-smartreco}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-smartreco} -d ${POSTGRES_DB:-smartreco}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  qdrant:
+    image: qdrant/qdrant:v1.11.0
+    container_name: smartreco_qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"   # REST
+      - "6334:6334"   # gRPC
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      # qdrant's image has no curl/wget, and CMD-SHELL runs via /bin/sh (dash) which lacks the
+      # /dev/tcp device — invoke bash explicitly (present in the image) for a raw HTTP GET instead.
+      test:
+        - "CMD"
+        - "bash"
+        - "-c"
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/6333 &&
+          printf 'GET /healthz HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          head -1 <&3 | grep -q '200 OK'
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  redis:
+    image: redis:7-alpine
+    container_name: smartreco_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+volumes:
+  postgres_data:
+  qdrant_data:
+  redis_data:
