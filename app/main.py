@@ -23,6 +23,8 @@ from qdrant_client import AsyncQdrantClient
 
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger, set_run_id
+from app.db.qdrant_bootstrap import bootstrap_qdrant
+from app.db.session import dispose_engine, engine
 
 configure_logging(settings.log_level)
 logger = get_logger(__name__)
@@ -34,16 +36,37 @@ _HEALTH_CHECK_TIMEOUT_SECONDS = 2.0
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """App startup/shutdown hook.
 
-    Empty in Phase 0 by design. Phase 4 starts the APScheduler outbox-drain loop here (must be
-    in-process and continuous); later phases add the digest/drift jobs. See PRD §13.3 — this is
-    the scheduler that must never depend on an idle-sleeping host.
+    Phase 1 (this): the async DB engine is created at import time (`app.db.session.engine`,
+    imported above so the module-level `create_async_engine` runs); nothing schema-related happens
+    here — Alembic owns schema. Also runs the idempotent Qdrant `products` collection bootstrap so
+    a fresh environment never demos against a missing collection. Qdrant unreachability at startup
+    is logged, not fatal — `GET /health` already reports it, and failing app boot on a transient
+    infra hiccup would be worse than starting degraded (same philosophy as the `_check_*` health
+    helpers below, which never raise).
+
+    Phase 4 starts the APScheduler outbox-drain loop here too (must be in-process and continuous);
+    later phases add the digest/drift jobs. See PRD §13.3 — this is the scheduler that must never
+    depend on an idle-sleeping host.
     """
     set_run_id()
     logger.info(
         "smartreco.startup",
-        extra={"extra_fields": {"environment": settings.environment}},
+        extra={
+            "extra_fields": {
+                "environment": settings.environment,
+                "db_driver": engine.url.drivername,
+            }
+        },
     )
+    try:
+        await bootstrap_qdrant()
+    except Exception as exc:  # noqa: BLE001 - startup must never crash the app on infra hiccups
+        logger.error(
+            "qdrant.bootstrap_failed",
+            extra={"extra_fields": {"detail": f"{type(exc).__name__}: {exc}"}},
+        )
     yield
+    await dispose_engine()
     logger.info("smartreco.shutdown")
 
 
