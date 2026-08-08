@@ -1,0 +1,18 @@
+{
+  "headline": "Your next step in production-grade RAG",
+  "narrative": "Across your last sessions you kept returning to advanced retrieval-augmented generation and ran vector-search queries more than once this week. You have the fundamentals down; the natural next move is to make retrieval production-ready and to prove it works. These picks build directly on what you have been exploring.",
+  "items": [
+    {
+      "product_id": "PLACEHOLDER_PRODUCT_1",
+      "reason": "You spent the most time on advanced RAG lessons; this goes one layer deeper into hybrid retrieval and re-ranking."
+    },
+    {
+      "product_id": "PLACEHOLDER_PRODUCT_2",
+      "reason": "Follows directly from the vector-database searches you repeated this week."
+    },
+    {
+      "product_id": "PLACEHOLDER_PRODUCT_3",
+      "reason": "Rounds out the track with the evaluation and observability skills your browsing suggested you were missing."
+    }
+  ]
+}

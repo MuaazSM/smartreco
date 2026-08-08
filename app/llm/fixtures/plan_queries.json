@@ -1,0 +1,13 @@
+{
+  "queries": [
+    "advanced retrieval augmented generation production course",
+    "vector database embeddings and hybrid search deep dive",
+    "evaluating and observing LLM agent pipelines"
+  ],
+  "filters": {
+    "category": null,
+    "level": "advanced",
+    "max_price_cents": null
+  },
+  "rationale": "Learner repeatedly returns to advanced RAG and vector-search material; widen slightly toward evaluation."
+}

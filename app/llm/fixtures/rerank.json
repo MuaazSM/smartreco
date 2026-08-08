@@ -1,0 +1,8 @@
+{
+  "ranking": [
+    {"product_id": "PLACEHOLDER_PRODUCT_1", "score": 0.97},
+    {"product_id": "PLACEHOLDER_PRODUCT_2", "score": 0.91},
+    {"product_id": "PLACEHOLDER_PRODUCT_3", "score": 0.74},
+    {"product_id": "PLACEHOLDER_PRODUCT_4", "score": 0.52}
+  ]
+}

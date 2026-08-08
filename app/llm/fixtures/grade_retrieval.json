@@ -1,0 +1,10 @@
+{
+  "score": 0.82,
+  "gap": "Candidates cover retrieval well but under-represent evaluation and observability of agents.",
+  "decisions": [
+    {"product_id": "PLACEHOLDER_PRODUCT_1", "keep": true},
+    {"product_id": "PLACEHOLDER_PRODUCT_2", "keep": true},
+    {"product_id": "PLACEHOLDER_PRODUCT_3", "keep": true},
+    {"product_id": "PLACEHOLDER_PRODUCT_4", "keep": false}
+  ]
+}
