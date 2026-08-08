@@ -114,7 +114,7 @@ SmartReco-PRD.pdf         the specification (repo root)
 
 **Tests.** Pytest with `pytest-asyncio`. The four that matter most are `test_dual_write.py`, `test_grounding.py`, `test_trigger.py`, `test_single_gateway.py`. Write these even if coverage elsewhere is thin — they defend the invariants above.
 
-**Commits.** Use [Conventional Commits](https://www.conventionalcommits.org) (`feat:`, `fix:`, `chore:`, `refactor:`, `docs:`, `test:`, `ci:`, `build:`). Keep messages short and descriptive of *what changed*, not internal build phases — never put a phase name, task label, or step number in the message. Commit incrementally at sub-phase granularity (small, focused commits), and push after each. **No trailers** — no `Co-Authored-By`, no session links, no tooling attribution. Remote is `origin` → `https://github.com/MuaazSM/smartreco.git`, branch `main`. CI runs on every push and green CI is an eligibility requirement.
+**Commits.** Use [Conventional Commits](https://www.conventionalcommits.org) (`feat:`, `fix:`, `chore:`, `refactor:`, `docs:`, `test:`, `ci:`, `build:`). Keep messages short and descriptive of *what changed*, not internal build phases — never put a phase name, task label, or step number in the message. Commit incrementally at sub-phase granularity (small, focused commits), and push after each. **No trailers** — no `Co-Authored-By`, no session links, no tooling attribution. Author every commit as `MuaazSM <170370120+MuaazSM@users.noreply.github.com>` (the repo owner). Remote is `origin` → `https://github.com/MuaazSM/smartreco.git`, branch `main`. CI runs on every push and green CI is an eligibility requirement.
 
 ---
 
