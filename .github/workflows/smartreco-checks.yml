@@ -1,45 +1,72 @@
-name: smartreco-checks
+name: SmartReco Checks
 
-# Green CI is an eligibility requirement (CLAUDE.md, PRD §11 Day 4 PM). Two gates:
-# 1. every .py file under app/ scripts/ evals/ tests/ compiles (catches stray syntax errors fast);
-# 2. the pytest suite passes. Both run on every push and every PR.
+on: [push]
 
-on:
-  push:
-  pull_request:
+permissions:
+  id-token: write      # required — without this the OIDC env vars do not exist
+  contents: read
+
+# A newer push supersedes an older run. The server also rejects stale runs by run_id,
+# but cancelling here saves runner minutes.
+concurrency:
+  group: smartreco-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Where the API actually lives. This is the only value that changes between environments.
+  API_BASE: https://careerapi-production.krishnaik.in
+  # Opaque identifier stamped into the OIDC token. NOT a URL that gets fetched, and NOT
+  # environment-specific — the server accepts this exact string everywhere. Do not change it.
+  OIDC_AUDIENCE: https://career.krishnaik.in
+  HACKATHON: smartreco-build-challenge-2026
 
 jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-          cache: "pip"
+          python-version: '3.11'
 
-      - name: Install dependencies
+      # No extra dependencies: these checks use only the Python standard library.
+
+      - name: Request GitHub OIDC token
+        id: oidc
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          TOKEN=$(curl -sS \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${{ env.OIDC_AUDIENCE }}" \
+            | jq -r '.value')
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "::error::Could not get an OIDC token. Check 'permissions: id-token: write'."
+            exit 1
+          fi
+          echo "::add-mask::$TOKEN"
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
 
-      - name: Compile check (critical)
-        run: python -m compileall app scripts evals tests -q
-
-      - name: Single-gateway / no-secrets sanity
+      - name: Download checks
+        env:
+          OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+          SUBMISSION_TOKEN: ${{ secrets.SUBMISSION_TOKEN }}
         run: |
-          if [ -f .env ]; then
-            echo "::error::.env must not be committed"
+          # The script is served only to GitHub Actions, and only for the hackathon this
+          # token is registered for. Print the server's reason on failure instead of a
+          # bare exit code.
+          HTTP=$(curl -sS -o checks.py -w '%{http_code}' \
+            -H "Authorization: Bearer $OIDC_TOKEN" \
+            -H "X-Submission-Token: $SUBMISSION_TOKEN" \
+            "$API_BASE/api/ci/hackathons/$HACKATHON/checks.py")
+          if [ "$HTTP" != "200" ]; then
+            echo "::error::Could not download checks (HTTP $HTTP): $(cat checks.py)"
             exit 1
           fi
 
-      - name: Run tests
+      - name: Run checks
         env:
-          MESH_DISABLED: "true"
-          DATABASE_URL: "postgresql+asyncpg://smartreco:smartreco_local_dev@localhost:5432/smartreco"
-          QDRANT_URL: "http://localhost:6333"
-          REDIS_URL: "redis://localhost:6379/0"
-          JWT_SECRET: "ci-test-secret"
-        run: pytest -q
+          WEBHOOK_URL: ${{ env.API_BASE }}/api/ci/report
+          SUBMISSION_TOKEN: ${{ secrets.SUBMISSION_TOKEN }}
+          OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+          MESH_API_KEY: ${{ secrets.MESH_API_KEY }}
+        run: python checks.py
