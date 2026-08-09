@@ -155,15 +155,22 @@ async def sync_status(
     else:
         outbox_lag_seconds = 0.0
 
+    # "in_sync: true" means fully settled AND fresh: the two stores agree on ids, nothing is parked
+    # as failed, AND nothing is still pending. A pending content-update leaves Qdrant holding a stale
+    # vector for an id that is in both sets (so no missing/orphaned would catch it) — hence pending
+    # must count against in_sync for the claim to be truthful.
+    drift = bool(missing_in_vector) or bool(orphaned_in_vector) or failed_count > 0
     result = SyncStatus(
-        in_sync=not missing_in_vector and not orphaned_in_vector and failed_count == 0,
+        in_sync=not drift and pending_count == 0,
         missing_in_vector=missing_in_vector,
         orphaned_in_vector=orphaned_in_vector,
         outbox_lag_seconds=outbox_lag_seconds,
         pending_count=pending_count,
         failed_count=failed_count,
     )
-    if not result.in_sync:
+    # Only genuine drift is an error worth surfacing. A nonzero pending_count is normal transient
+    # "still settling" state that the 5s drain clears — logging it as an error would be a false alarm.
+    if drift:
         logger.error(
             "admin.sync_status_degraded",
             extra={
