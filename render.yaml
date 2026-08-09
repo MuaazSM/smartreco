@@ -1,0 +1,122 @@
+# Render Blueprint (PRD §13.1) — one Docker web service for the FastAPI backend + in-process
+# APScheduler outbox drain (invariant #3: the 5s drain must be continuous, so it stays in-process
+# even in production — see app/main.py's lifespan and PRD §13.3).
+#
+# Postgres (Neon), Redis (Upstash) and Qdrant (Qdrant Cloud) are EXTERNAL managed services — this
+# blueprint does not provision them. Create each one separately (free tiers cover a 40-item catalog
+# comfortably) and paste their connection strings into the `sync: false` env vars below via the
+# Render dashboard (this service → Environment) after the blueprint is applied.
+#
+# Deploy: Render dashboard → New → Blueprint → point at this repo → Apply. Full numbered walkthrough
+# (provisioning Neon/Upstash/Qdrant Cloud, running the one-time seed, wiring the Vercel frontend and
+# the GitHub Actions digest cron) is in README.md §8.
+#
+# Every key below matches a field on app/core/config.py's `Settings` exactly (env var = field name
+# upper-cased; pydantic-settings is case-insensitive) — see .env.example for the local-dev values
+# these override.
+
+services:
+  - type: web
+    name: smartreco-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # --- app ---
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: APP_NAME
+        value: SmartReco
+      # PORT is injected by Render itself; docker-entrypoint.sh reads it via ${PORT:-8000}.
+
+      # --- database — Neon (external, PRD §13.1). Paste the Neon connection string rewritten to
+      # the postgresql+asyncpg:// driver, with ?sslmode=require appended (PRD §13.4). ---
+      - key: DATABASE_URL
+        sync: false
+
+      # --- vector store — Qdrant Cloud (external) ---
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+
+      # --- cache / locks — Upstash Redis (external) ---
+      - key: REDIS_URL
+        sync: false
+
+      # --- mesh api — the ONLY LLM/embedding provider (CLAUDE.md invariant #1) ---
+      - key: MESH_API_KEY
+        sync: false
+      - key: MESH_BASE_URL
+        value: https://api.meshapi.ai/v1
+      - key: MESH_DISABLED
+        value: "false"
+
+      # --- auth ---
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_EXPIRE_MINUTES
+        value: "1440"
+      - key: BCRYPT_ROUNDS
+        value: "12"
+
+      # --- cookies / CORS (PRD §13.2). Default = recommended topology: the Vercel frontend proxies
+      # /api/* to this service via next.config.mjs's rewrite (BACKEND_ORIGIN), so the browser only
+      # ever talks to the Vercel origin and SameSite=Lax works with no CORS needed — leave
+      # CORS_ORIGINS at its default and COOKIE_SAMESITE=lax. Only switch to the split+CORS
+      # alternative (COOKIE_SAMESITE=none, CORS_ORIGINS = the exact Vercel URL) if the frontend
+      # calls this service directly instead of through the rewrite. ---
+      - key: COOKIE_SAMESITE
+        value: lax
+      - key: CORS_ORIGINS
+        value: http://localhost:3000
+      - key: FRONTEND_URL
+        sync: false
+
+      # --- digest email (bonus F7) — SMTP_* or RESEND_API_KEY; optional, digest saves to disk and
+      # logs instead of failing if neither is configured ---
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+
+      # --- observability (bonus F8) — optional, LangSmith tracing off unless set ---
+      - key: LANGSMITH_API_KEY
+        sync: false
+      - key: LANGSMITH_PROJECT
+        value: smartreco
+      - key: LANGSMITH_TRACING
+        value: "false"
+
+      # --- scheduled digest trigger (GitHub Actions → POST /api/internal/run-digest, PRD §13.3).
+      # Copy the generated value into the repo secret DIGEST_TRIGGER_TOKEN used by
+      # .github/workflows/digest.yml so the two sides match. ---
+      - key: DIGEST_TRIGGER_TOKEN
+        generateValue: true
+
+      # --- scheduler (PRD §13.3): keep the 5s outbox drain running continuously in-process — Render
+      # web services stay warm while receiving traffic, unlike serverless. The 09:00 digest instead
+      # fires via .github/workflows/digest.yml, not this in-process cron; see README.md §8 step 6. ---
+      - key: SMARTRECO_RUN_SCHEDULER
+        value: "true"
+
+      # --- one-time catalog seed gate (docker-entrypoint.sh, not a Settings field). Leave false;
+      # flip to true for exactly the first boot after provisioning a fresh DATABASE_URL, confirm the
+      # seed ran, then set back to false and redeploy. See README.md §8 step 3. ---
+      - key: SEED_ON_BOOT
+        value: "false"
