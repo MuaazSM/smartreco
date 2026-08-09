@@ -27,12 +27,13 @@ from app.api.routes.admin import router as admin_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.events import router as events_router
 from app.api.routes.products import router as products_router
+from app.api.routes.recommendations import router as recommendations_router
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger, set_run_id
 from app.db.qdrant_bootstrap import bootstrap_qdrant
 from app.db.session import dispose_engine, engine
 from app.llm import model_router
-from app.services import outbox_worker
+from app.services import cache, outbox_worker
 from app.vector.qdrant_client import QdrantVectorStore
 
 configure_logging(settings.log_level)
@@ -126,6 +127,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         scheduler.shutdown(wait=False)
     if worker_store is not None:
         await worker_store.close()
+    await cache.close_redis()
     await dispose_engine()
     logger.info("smartreco.shutdown")
 
@@ -144,6 +146,7 @@ app.include_router(auth_router)
 app.include_router(products_router)
 app.include_router(admin_router)
 app.include_router(events_router)
+app.include_router(recommendations_router)
 
 
 def _asyncpg_dsn(database_url: str) -> str:
