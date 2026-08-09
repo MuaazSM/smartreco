@@ -87,12 +87,12 @@ Seeded logins (from `scripts/seed_data.py`): `admin@smartreco.dev` (admin) and `
 
 **Bonuses shipped:**
 - ⭐ **Structured agent framework** — 7-node LangGraph, conditional edges, bounded refine loop → [`app/agent/graph.py`](app/agent/graph.py)
-- ⭐ **Retrieval polish** — dense + BM25 → Reciprocal Rank Fusion → metadata filter → MMR (λ=0.7) → top-12 → [`app/vector/hybrid_retriever.py`](app/vector/hybrid_retriever.py); pairwise reranker scaffold at [`app/vector/reranker.py`](app/vector/reranker.py) (pass-through by default)
+- ⭐ **Retrieval polish** — dense + BM25 → Reciprocal Rank Fusion → metadata filter → MMR (λ=0.7) → top-12 → [`app/vector/hybrid_retriever.py`](app/vector/hybrid_retriever.py); a functional pairwise reranker (Mesh cheap-tier, **permutation-only so grounding is preserved**, opt-in via `run_agent(enable_rerank=True)`, with a structural lift-measurement harness) at [`app/vector/reranker.py`](app/vector/reranker.py)
 - ⭐ **Observability** — `GET /api/admin/agent-runs` (node path, retrieval score, refine loops, tokens, cost, latency) + `GET /api/admin/metrics` → [`app/api/routes/admin.py`](app/api/routes/admin.py), [`app/services/metrics.py`](app/services/metrics.py); LangSmith is env-ready (set `LANGSMITH_*`)
 - ⭐ **Scheduled proactive delivery (F7)** — APScheduler 09:00 digest + 03:00 drift audit on the same scheduler as the 5s drain, Jinja2 recap-with-hook email (graceful save-to-disk without SMTP), token-protected `POST /api/internal/run-digest`, and a GitHub Actions cron for the sleeping-host trap → [`app/scheduler/jobs.py`](app/scheduler/jobs.py), [`app/scheduler/digest.py`](app/scheduler/digest.py), [`app/api/routes/internal.py`](app/api/routes/internal.py), [`.github/workflows/digest.yml`](.github/workflows/digest.yml); demo it with `python scripts/send_digest_now.py`
 - **Evaluation harness** — 10 synthetic profiles scored on groundedness / behavioral relevance / persuasion / diversity → [`evals/eval_recommendations.py`](evals/eval_recommendations.py), results in [`evals/results.md`](evals/results.md)
 
-**Being finalized:** a functional (non-pass-through) reranker and the `scripts/simulate_behavior.py` persona-replay demo helper. The 5s outbox drain and the daily digest/drift schedulers are in place.
+**See it change (the 60-second demo):** with the backend running and the catalog seeded, [`python scripts/simulate_behavior.py`](scripts/simulate_behavior.py) replays three personas' behavior against the live API and prints each dashboard block evolving as their interests shift — the fastest way to watch the whole system work end to end with no manual clicking.
 
 ---
 
