@@ -313,3 +313,63 @@ def test_delete_removes_qdrant_point_and_stays_in_sync(admin_client: TestClient)
     assert status["in_sync"] is True, status
     assert product_id not in status["orphaned_in_vector"]
     assert product_id not in status["missing_in_vector"]
+
+
+def test_deactivate_via_patch_removes_point_and_reactivate_restores_it(
+    admin_client: TestClient,
+) -> None:
+    # Regression guard: deactivating via PATCH is_active:false must DELETE the Qdrant point (not
+    # upsert an inactive one), or the point orphans forever and sync-status is permanently false.
+    created = _create_product(admin_client, f"Toggle Active {uuid.uuid4().hex}")
+    product_id = created["id"]
+    _drain_all()
+    assert _qdrant_point_exists(product_id) is True
+
+    # PATCH is_active:false -> enqueues a delete op (mirrors DELETE /products/{id}).
+    off = admin_client.patch(f"/api/admin/products/{product_id}", json={"is_active": False})
+    assert off.status_code == 200, off.text
+    assert off.json()["is_active"] is False
+    assert [r["op"] for r in _outbox_rows(product_id)][-1] == "delete"
+
+    _drain_all()
+    assert _qdrant_point_exists(product_id) is False  # point removed, not left orphaned
+    status_off = admin_client.get("/api/admin/sync-status").json()
+    assert status_off["in_sync"] is True, status_off
+    assert product_id not in status_off["orphaned_in_vector"]
+
+    # PATCH is_active:true -> re-adds the point via an upsert.
+    on = admin_client.patch(f"/api/admin/products/{product_id}", json={"is_active": True})
+    assert on.status_code == 200, on.text
+    assert on.json()["is_active"] is True
+    assert [r["op"] for r in _outbox_rows(product_id)][-1] == "upsert"
+
+    _drain_all()
+    assert _qdrant_point_exists(product_id) is True  # point restored
+    status_on = admin_client.get("/api/admin/sync-status").json()
+    assert status_on["in_sync"] is True, status_on
+    assert product_id not in status_on["missing_in_vector"]
+
+
+def test_sync_status_not_in_sync_while_update_pending(admin_client: TestClient) -> None:
+    # Honesty of the in_sync claim: a pending content-update (id in both stores, but Qdrant vector is
+    # stale) must report in_sync:false until the drain settles it.
+    created = _create_product(admin_client, f"Pending Honesty {uuid.uuid4().hex}")
+    product_id = created["id"]
+    _drain_all()
+    assert admin_client.get("/api/admin/sync-status").json()["in_sync"] is True
+
+    resp = admin_client.patch(
+        f"/api/admin/products/{product_id}",
+        json={"title": f"Pending Honesty (revised) {uuid.uuid4().hex}"},
+    )
+    assert resp.status_code == 200, resp.text
+
+    pending = admin_client.get("/api/admin/sync-status").json()
+    assert pending["pending_count"] >= 1
+    assert pending["in_sync"] is False  # still settling — not truthfully in sync yet
+    # ...neither missing nor orphaned catches it (the id is in both sets); pending_count is what does.
+    assert product_id not in pending["missing_in_vector"]
+    assert product_id not in pending["orphaned_in_vector"]
+
+    _drain_all()
+    assert admin_client.get("/api/admin/sync-status").json()["in_sync"] is True
