@@ -5,16 +5,14 @@
  * does the actual authenticating; this context only mirrors "who is logged in" into React state so
  * the nav bar, the dashboard guard, and the admin guard don't each fetch it independently.
  *
- * There is no `POST /api/auth/logout` route on the backend (this phase is frontend-only and does not
- * add one — see the Phase 8 report-back FOLLOWUPS). `logout()` here clears local UI state and
- * redirects to `/login`; the httpOnly cookie itself remains valid until its 24h expiry. Good enough
- * for a demo where personas are switched by logging into a different account, but it is not a real
- * session revocation.
+ * `logout()` calls `POST /api/auth/logout`, which clears the httpOnly cookie server-side (JS cannot
+ * touch it), then drops local state and redirects to `/login` — so the session actually ends and the
+ * next `/api/auth/me` probe returns 401 rather than silently re-authenticating.
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-import { apiGet } from "../lib/api";
+import { apiGet, apiPost } from "../lib/api";
 import type { UserOut } from "../lib/types";
 
 interface AuthState {
@@ -22,7 +20,7 @@ interface AuthState {
   /** True only while the initial `/api/auth/me` probe is in flight. */
   loading: boolean;
   refresh: () => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -49,7 +47,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     void refresh();
   }, [refresh]);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    // Clear the httpOnly cookie server-side first — otherwise the next /api/auth/me probe just
+    // re-authenticates and "logged out" never sticks. Redirect regardless of the call's result.
+    try {
+      await apiPost("/api/auth/logout");
+    } catch {
+      // ignore — still drop local state and send the user to /login
+    }
     setUser(null);
     if (typeof window !== "undefined") window.location.href = "/login";
   }, []);

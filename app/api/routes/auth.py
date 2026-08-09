@@ -120,6 +120,24 @@ async def login(
     return user
 
 
+@router.post("/logout")
+async def logout(response: Response) -> dict[str, str]:
+    """End the session by clearing the httpOnly JWT cookie. The cookie can't be cleared from JS, so
+    a real logout must happen server-side; the delete must reuse the same path/SameSite/Secure the
+    cookie was set with or the browser won't drop it. Idempotent — safe to call when already logged
+    out (no auth required)."""
+    samesite = settings.cookie_samesite.lower()
+    response.delete_cookie(
+        ACCESS_TOKEN_COOKIE_NAME,
+        path="/",
+        samesite=samesite,
+        secure=samesite == "none",
+        httponly=True,
+    )
+    logger.info("auth.logout")
+    return {"detail": "logged out"}
+
+
 @router.get("/me", response_model=UserOut)
 async def me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
