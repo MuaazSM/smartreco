@@ -75,7 +75,7 @@ export function AdminDashboard(): React.ReactElement {
         onCancelEdit={() => setEditing(null)}
       />
 
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="text-sm text-neg">{error}</p>}
 
       {loading ? (
         <div className="space-y-2">
@@ -84,47 +84,50 @@ export function AdminDashboard(): React.ReactElement {
           ))}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+        <div className="card overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-neutral-50 dark:bg-neutral-900">
-              <tr>
-                <th className="px-3 py-2 font-medium">Title</th>
-                <th className="px-3 py-2 font-medium">Category</th>
-                <th className="px-3 py-2 font-medium">Level</th>
-                <th className="px-3 py-2 font-medium">Price</th>
-                <th className="px-3 py-2 font-medium">Vector synced</th>
-                <th className="px-3 py-2 font-medium">Actions</th>
+            <thead className="bg-[color-mix(in_srgb,var(--hairline)_45%,transparent)]">
+              <tr className="[&>th]:px-3 [&>th]:py-2.5 [&>th]:font-mono [&>th]:text-[0.68rem] [&>th]:font-normal [&>th]:uppercase [&>th]:tracking-[0.1em] [&>th]:text-faint">
+                <th>Title</th>
+                <th>Category</th>
+                <th>Level</th>
+                <th>Price</th>
+                <th>Vector synced</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {(page?.items ?? []).map((product) => (
                 <tr
                   key={product.id}
-                  className="border-t border-neutral-200 hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-900"
+                  className="border-t border-hairline transition-colors hover:bg-[color-mix(in_srgb,var(--hairline)_28%,transparent)]"
                 >
-                  <td className="px-3 py-2">{product.title}</td>
-                  <td className="px-3 py-2">{product.category}</td>
-                  <td className="px-3 py-2">{product.level}</td>
-                  <td className="px-3 py-2 font-mono">{formatPrice(product.price_cents)}</td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2.5">{product.title}</td>
+                  <td className="px-3 py-2.5 text-muted">{product.category}</td>
+                  <td className="px-3 py-2.5 text-muted">{product.level}</td>
+                  <td className="mono px-3 py-2.5">{formatPrice(product.price_cents)}</td>
+                  <td className="px-3 py-2.5">
                     {product.vector_synced_at ? (
-                      <span className="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400">
-                        <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                        Synced
+                      <span className="mono inline-flex items-center gap-1.5 text-xs text-ok">
+                        <span className="h-2 w-2 rounded-full bg-ok" />
+                        synced
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 text-amber-700 dark:text-amber-400">
-                        <span className="h-2 w-2 rounded-full bg-amber-500" />
-                        Pending
+                      <span
+                        className="mono inline-flex items-center gap-1.5 text-xs"
+                        style={{ color: "var(--faint)" }}
+                      >
+                        <span className="h-2 w-2 rounded-full" style={{ background: "var(--faint)" }} />
+                        pending
                       </span>
                     )}
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2.5">
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => setEditing(product)}
-                        className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700"
+                        className="rounded-md border border-hairline-strong px-3 py-1.5 text-sm text-muted transition-colors hover:border-ink hover:text-ink"
                       >
                         Edit
                       </button>
@@ -132,7 +135,7 @@ export function AdminDashboard(): React.ReactElement {
                         type="button"
                         onClick={() => void handleDelete(product)}
                         disabled={deletingId === product.id}
-                        className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-700 disabled:opacity-50 dark:border-red-900 dark:text-red-400"
+                        className="btn btn-neg !px-3 !py-1.5 !text-sm"
                       >
                         {deletingId === product.id ? "Deleting…" : "Delete"}
                       </button>
@@ -143,9 +146,7 @@ export function AdminDashboard(): React.ReactElement {
             </tbody>
           </table>
           {(page?.items.length ?? 0) === 0 && (
-            <p className="p-4 text-center text-sm text-neutral-600 dark:text-neutral-400">
-              No active products yet.
-            </p>
+            <p className="p-4 text-center text-sm text-muted">No active products yet.</p>
           )}
         </div>
       )}

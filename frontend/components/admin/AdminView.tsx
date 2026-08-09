@@ -14,7 +14,7 @@ export function AdminView(): React.ReactElement {
 
   if (loading) {
     return (
-      <main className="mx-auto max-w-4xl px-6 py-12">
+      <main className="mx-auto max-w-page px-7 py-12">
         <SkeletonBlock className="h-8 w-48" />
         <SkeletonBlock className="mt-4 h-24 w-full" />
       </main>
@@ -23,15 +23,11 @@ export function AdminView(): React.ReactElement {
 
   if (!user) {
     return (
-      <main className="mx-auto max-w-4xl px-6 py-12">
-        <h1 className="text-2xl font-bold">Admin</h1>
-        <p className="mt-3 text-neutral-600 dark:text-neutral-400">
-          Log in with an admin account to manage the catalog.
-        </p>
-        <a
-          href="/login"
-          className="mt-4 inline-block rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-neutral-900"
-        >
+      <main className="mx-auto max-w-page px-7 py-12">
+        <p className="eyebrow">Admin</p>
+        <h1 className="mt-2 text-3xl">Admin access</h1>
+        <p className="mt-3 text-muted">Log in with an admin account to manage the catalog.</p>
+        <a href="/login" className="btn mt-5">
           Log in
         </a>
       </main>
@@ -40,20 +36,21 @@ export function AdminView(): React.ReactElement {
 
   if (user.role !== "admin") {
     return (
-      <main className="mx-auto max-w-4xl px-6 py-12">
-        <h1 className="text-2xl font-bold">Admin</h1>
-        <p className="mt-3 text-neutral-600 dark:text-neutral-400">
-          This account does not have admin access.
-        </p>
+      <main className="mx-auto max-w-page px-7 py-12">
+        <p className="eyebrow">Admin</p>
+        <h1 className="mt-2 text-3xl">Admin access</h1>
+        <p className="mt-3 text-muted">This account doesn&rsquo;t have admin access.</p>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12">
-      <h1 className="text-2xl font-bold">Admin</h1>
-      <p className="mt-2 text-neutral-600 dark:text-neutral-400">
-        Product CRUD and the Postgres/Qdrant sync-status readout.
+    <main className="mx-auto max-w-page px-7 py-12">
+      <p className="eyebrow">Admin · catalog &amp; sync</p>
+      <h1 className="mt-2 text-3xl">Product CRUD, and the receipts</h1>
+      <p className="mt-2 text-muted">
+        Create and edit courses, and watch Postgres and Qdrant stay in lockstep — the single most
+        demonstrable claim in the system.
       </p>
       <AdminDashboard />
     </main>

@@ -89,11 +89,10 @@ export function AdminProductForm({
   }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="grid gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800 sm:grid-cols-2"
-    >
-      <h3 className="col-span-full font-semibold">{editing ? `Edit "${editing.title}"` : "New product"}</h3>
+    <form onSubmit={onSubmit} className="card grid gap-3 p-4 sm:grid-cols-2">
+      <h3 className="col-span-full font-mono text-[0.9rem] font-medium">
+        {editing ? `Edit "${editing.title}"` : "New product"}
+      </h3>
 
       <label className="text-sm">
         Title
@@ -101,7 +100,7 @@ export function AdminProductForm({
           required
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="mt-1 w-full rounded-md border border-neutral-300 bg-transparent px-3 py-2.5 text-sm dark:border-neutral-700"
+          className="field mt-1 w-full"
         />
       </label>
 
@@ -111,7 +110,7 @@ export function AdminProductForm({
           required
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          className="mt-1 w-full rounded-md border border-neutral-300 bg-transparent px-3 py-2.5 text-sm dark:border-neutral-700"
+          className="field mt-1 w-full"
         />
       </label>
 
@@ -121,7 +120,7 @@ export function AdminProductForm({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={2}
-          className="mt-1 w-full rounded-md border border-neutral-300 bg-transparent px-3 py-2.5 text-sm dark:border-neutral-700"
+          className="field mt-1 w-full"
         />
       </label>
 
@@ -130,7 +129,7 @@ export function AdminProductForm({
         <select
           value={level}
           onChange={(e) => setLevel(e.target.value as (typeof LEVELS)[number])}
-          className="mt-1 w-full rounded-md border border-neutral-300 bg-transparent px-3 py-2.5 text-sm dark:border-neutral-700"
+          className="field mt-1 w-full"
         >
           {LEVELS.map((l) => (
             <option key={l} value={l}>
@@ -148,7 +147,7 @@ export function AdminProductForm({
           step="0.01"
           value={priceDollars}
           onChange={(e) => setPriceDollars(e.target.value)}
-          className="mt-1 w-full rounded-md border border-neutral-300 bg-transparent px-3 py-2.5 text-sm dark:border-neutral-700"
+          className="field mt-1 w-full"
         />
       </label>
 
@@ -157,7 +156,7 @@ export function AdminProductForm({
         <input
           value={tags}
           onChange={(e) => setTags(e.target.value)}
-          className="mt-1 w-full rounded-md border border-neutral-300 bg-transparent px-3 py-2.5 text-sm dark:border-neutral-700"
+          className="field mt-1 w-full"
         />
       </label>
 
@@ -166,22 +165,14 @@ export function AdminProductForm({
         Active
       </label>
 
-      {error && <p className="col-span-full text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="col-span-full text-sm text-neg">{error}</p>}
 
       <div className="col-span-full flex gap-2">
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded-md bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
-        >
+        <button type="submit" disabled={submitting} className="btn">
           {submitting ? "Saving…" : editing ? "Save changes" : "Create product"}
         </button>
         {editing && (
-          <button
-            type="button"
-            onClick={onCancelEdit}
-            className="rounded-md border border-neutral-300 px-4 py-1.5 text-sm dark:border-neutral-700"
-          >
+          <button type="button" onClick={onCancelEdit} className="btn btn-o">
             Cancel
           </button>
         )}

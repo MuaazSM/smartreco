@@ -16,6 +16,38 @@ import { useVisiblePolling } from "../../lib/useVisiblePolling";
 
 const POLL_INTERVAL_MS = 10_000;
 
+function esc(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// Render the live sync-status as the artifact's "receipts" console — the same shape the landing
+// page shows statically. Dynamic ids are HTML-escaped before interpolation.
+function consoleHtml(status: SyncStatus): string {
+  const k = (v: string): string => `<span class="k">${v}</span>`;
+  const num = (v: string): string => `<span class="s">${v}</span>`;
+  const arr = (a: string[]): string =>
+    a.length === 0
+      ? "[]"
+      : `[ ${a
+          .slice(0, 3)
+          .map((x) => `<span class="s">"${esc(x)}"</span>`)
+          .join(", ")}${a.length > 3 ? `, <span class="dim">…+${a.length - 3}</span>` : ""} ]`;
+  const inSync = status.in_sync
+    ? `<span class="g">true</span>`
+    : `<span class="s" style="color:var(--neg)">false</span>`;
+  return [
+    `<span class="c">$ GET /api/admin/sync-status</span>`,
+    `{`,
+    `  ${k('"in_sync"')}: ${inSync},`,
+    `  ${k('"missing_in_vector"')}: ${arr(status.missing_in_vector)},`,
+    `  ${k('"orphaned_in_vector"')}: ${arr(status.orphaned_in_vector)},`,
+    `  ${k('"pending_count"')}: ${num(String(status.pending_count))},`,
+    `  ${k('"failed_count"')}: ${num(String(status.failed_count))},`,
+    `  ${k('"outbox_lag_seconds"')}: ${num(status.outbox_lag_seconds.toFixed(1))}`,
+    `}`,
+  ].join("\n");
+}
+
 export function SyncStatusPanel(): React.ReactElement {
   const [status, setStatus] = useState<SyncStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,7 +73,7 @@ export function SyncStatusPanel(): React.ReactElement {
 
   if (loading) {
     return (
-      <div className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+      <div className="card p-4">
         <SkeletonBlock className="h-5 w-40" />
         <SkeletonBlock className="mt-3 h-4 w-full" />
       </div>
@@ -50,49 +82,59 @@ export function SyncStatusPanel(): React.ReactElement {
 
   if (error || !status) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+      <div
+        className="rounded-xl border p-4 text-sm text-neg"
+        style={{
+          borderColor: "color-mix(in srgb, var(--neg) 30%, transparent)",
+          background: "color-mix(in srgb, var(--neg) 8%, transparent)",
+        }}
+      >
         {error ?? "Sync status unavailable."}
       </div>
     );
   }
 
+  const metrics: [string, number][] = [
+    ["Missing in vector", status.missing_in_vector.length],
+    ["Orphaned in vector", status.orphaned_in_vector.length],
+    ["Pending outbox", status.pending_count],
+    ["Failed outbox", status.failed_count],
+  ];
+
   return (
-    <div
-      className={`rounded-lg border p-4 ${
-        status.in_sync
-          ? "border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950"
-          : "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950"
-      }`}
-    >
-      <div className="flex items-center gap-2">
-        <span
-          className={`h-2.5 w-2.5 rounded-full ${status.in_sync ? "bg-emerald-500" : "bg-amber-500"}`}
-        />
-        <p className="font-semibold">
-          {status.in_sync ? "Postgres and Qdrant are in sync" : "Vector store drift detected"}
+    <div className="space-y-3">
+      <div className="card p-4">
+        <div className="flex items-center gap-2.5">
+          <span
+            className="h-2.5 w-2.5 rounded-full"
+            style={{ background: status.in_sync ? "var(--ok)" : "var(--neg)" }}
+          />
+          <p className="font-medium" style={{ color: status.in_sync ? "var(--ok)" : "var(--neg)" }}>
+            {status.in_sync ? "Postgres and Qdrant are in sync" : "Vector store drift detected"}
+          </p>
+        </div>
+        <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
+          {metrics.map(([label, value]) => (
+            <div key={label}>
+              <dt className="text-muted">{label}</dt>
+              <dd className="mono mt-0.5 font-medium">{value}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="mt-3 text-xs text-faint">
+          Outbox lag: <span className="mono">{status.outbox_lag_seconds.toFixed(1)}s</span>
         </p>
       </div>
-      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
-        <div>
-          <dt className="text-neutral-600 dark:text-neutral-400">Missing in vector</dt>
-          <dd className="font-mono font-medium">{status.missing_in_vector.length}</dd>
+
+      <div className="console">
+        <div className="console-bar">
+          <span className="console-dot" />
+          <span className="console-dot" />
+          <span className="console-dot" />
+          <span className="console-ttl">smartreco — admin · sync-status</span>
         </div>
-        <div>
-          <dt className="text-neutral-600 dark:text-neutral-400">Orphaned in vector</dt>
-          <dd className="font-mono font-medium">{status.orphaned_in_vector.length}</dd>
-        </div>
-        <div>
-          <dt className="text-neutral-600 dark:text-neutral-400">Pending outbox</dt>
-          <dd className="font-mono font-medium">{status.pending_count}</dd>
-        </div>
-        <div>
-          <dt className="text-neutral-600 dark:text-neutral-400">Failed outbox</dt>
-          <dd className="font-mono font-medium">{status.failed_count}</dd>
-        </div>
-      </dl>
-      <p className="mt-2 text-xs text-neutral-500">
-        Outbox lag: <span className="font-mono">{status.outbox_lag_seconds.toFixed(1)}s</span>
-      </p>
+        <pre dangerouslySetInnerHTML={{ __html: consoleHtml(status) }} />
+      </div>
     </div>
   );
 }
