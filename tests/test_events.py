@@ -203,8 +203,11 @@ def test_profile_rebuilt_with_decayed_centroid_and_bumped_counter(user_client: T
     # 4 of the 5 events reference vector-synced products -> a non-empty decayed centroid.
     assert len(row["interest_vector"]) > 0
     assert row["profile_hash"] is not None
-    # events_since_gen == number of distinct events just ingested (5); only a generation run resets it.
-    assert row["events_since_gen"] == 5
+    # Phase 7 wires the regeneration trigger into the ingest background task, and the trigger now owns
+    # events_since_gen (Phase 5 deferred the reset to it). This batch carries a high-intent 'cart'
+    # event and the user is brand-new (no cooldown), so a full generation runs and resets the counter
+    # to 0. (Pre-Phase-7 this asserted == 5, before any code reset the counter.)
+    assert row["events_since_gen"] == 0
     # The search term fed top_terms; the product events fed top_categories.
     import json as _json
 
