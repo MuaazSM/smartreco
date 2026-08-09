@@ -2,60 +2,387 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+   Design tokens — ported from the SmartReco Claude Design artifact.
+   Light is the base; dark applies via prefers-color-scheme AND an explicit
+   [data-theme] override so the manual toggle always wins over the OS setting.
+   ========================================================================== */
 :root {
   color-scheme: light dark;
-  --accent: #4f46e5; /* indigo — links, active nav, focus ring, progress */
-  --accent-soft: #eef2ff; /* indigo-50, subtle fills */
+
+  --paper: #f4f5f7;
+  --surface: #ffffff;
+  --ink: #111317;
+  --muted: #5c6270;
+  --faint: #8a8f9c;
+  --hairline: #e3e5eb;
+  --hairline-2: #d0d3db;
+  --accent: #2563eb;
+  --accent-soft: #e9f0fe;
+  --ok: #0b8f63;
+  --neg: #c14b41;
+
+  /* The console panel is always dark — a deliberate single dark surface that
+     carries the "receipts": sync-status JSON, agent node paths, eval scores. */
+  --con-bg: #0e1017;
+  --con-panel: #14161f;
+  --con-edge: #202430;
+  --con-ink: #d9dce6;
+  --con-mut: #6a7085;
+  --con-key: #7ea6ff;
+  --con-ok: #3ddc97;
+  --con-str: #c8b6ff;
+
+  --maxw: 1120px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --accent: #a5b4fc; /* indigo-300 — readable accent on near-black */
-    --accent-soft: #1e1b4b; /* indigo-950 */
+    --paper: #0a0b0e; --surface: #111318; --ink: #ecedf2; --muted: #9298a6; --faint: #6b7180;
+    --hairline: #20232b; --hairline-2: #2b2f39; --accent: #6ea3ff; --accent-soft: #14213e;
+    --ok: #34d399; --neg: #f0857a;
   }
 }
+:root[data-theme="light"] {
+  color-scheme: light;
+  --paper: #f4f5f7; --surface: #ffffff; --ink: #111317; --muted: #5c6270; --faint: #8a8f9c;
+  --hairline: #e3e5eb; --hairline-2: #d0d3db; --accent: #2563eb; --accent-soft: #e9f0fe;
+  --ok: #0b8f63; --neg: #c14b41;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #0a0b0e; --surface: #111318; --ink: #ecedf2; --muted: #9298a6; --faint: #6b7180;
+  --hairline: #20232b; --hairline-2: #2b2f39; --accent: #6ea3ff; --accent-soft: #14213e;
+  --ok: #34d399; --neg: #f0857a;
+}
 
+/* ---- Base element styles (element selectors → utilities always override) ---- */
+* {
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+}
 body {
-  @apply bg-white text-neutral-900 antialiased;
-  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-  font-size: 1.0625rem; /* 17px base — untyped text was 16, most UI was 14 */
-  line-height: 1.65;
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 1.0625rem; /* 17px */
+  line-height: 1.62;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  font-feature-settings: "cv05", "ss01";
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    @apply bg-neutral-950 text-neutral-100;
-  }
-}
-
-/* Serif display voice for the big headlines (page h1s + the recommendation h2). Card titles
-   (h3) intentionally stay in the sans body face for legibility in dense grids. */
+/* Fraunces carries the display voice. Optical sizing tracks the font-size for
+   free (opsz axis); SOFT rounds the terminals a touch so headlines read warm
+   and hand-cut rather than templated. */
 h1,
-h2 {
-  font-family: var(--font-display), ui-serif, Georgia, serif;
-  letter-spacing: -0.015em;
+h2,
+h3 {
+  font-family: var(--font-display), ui-serif, Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  font-optical-sizing: auto;
+  font-variation-settings: "SOFT" 40, "WONK" 0;
+  margin: 0;
+}
+p {
+  margin: 0;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+em {
+  font-style: italic;
 }
 
-/* Accessibility floor: a visible keyboard focus ring everywhere. The app previously had no
-   deliberate focus treatment on any custom button/input/link. */
+/* Accessibility floor: one visible keyboard focus ring everywhere. */
 :focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: 4px;
+  outline-offset: 3px;
+  border-radius: 3px;
 }
 :focus:not(:focus-visible) {
   outline: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
   *,
   *::before,
   *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================================
+   Reusable design-system classes for the artifact's recurring motifs.
+   Kept as plain rules (not @layer) so they always ship and sit in source
+   before nothing that would purge them; combine with token-aware utilities.
+   ========================================================================== */
+
+/* Labels */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.73rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--faint);
+}
+.kicker {
+  font-family: var(--font-mono);
+  font-size: 0.73rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+}
+.lede {
+  font-size: 1.2rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Buttons */
+.btn {
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+  font-weight: 550;
+  line-height: 1;
+  padding: 10px 17px;
+  border-radius: 9px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+  transition: opacity 0.15s, transform 0.12s, border-color 0.15s, background 0.15s, color 0.15s;
+}
+.btn:hover {
+  transform: translateY(-1px);
+  opacity: 0.9;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  transform: none;
+}
+.btn-lg {
+  padding: 14px 24px;
+  font-size: 1rem;
+}
+.btn-o {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--hairline-2);
+}
+.btn-o:hover {
+  border-color: var(--ink);
+  opacity: 1;
+}
+.btn-neg {
+  background: transparent;
+  color: var(--neg);
+  border-color: color-mix(in srgb, var(--neg) 45%, transparent);
+}
+.btn-neg:hover {
+  border-color: var(--neg);
+  opacity: 1;
+}
+
+/* Surface card + theme toggle */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+}
+.tog {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  background: transparent;
+  border: 1px solid var(--hairline-2);
+  color: var(--muted);
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tog:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+/* Form fields (add `w-full` where a full-width control is wanted) */
+.field {
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--hairline-2);
+  border-radius: 9px;
+  padding: 10px 13px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.field::placeholder {
+  color: var(--faint);
+}
+.field:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* Mono chip */
+.tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--hairline) 55%, transparent);
+  border: 1px solid var(--hairline);
+  padding: 3px 9px;
+  border-radius: 6px;
+}
+
+/* Annotated recommendation card — the product's signature. A pick (.rec) is grounded in a
+   footnote (.fn); hovering the pick highlights its evidence (.fn.hot). Used on both the
+   landing hero and the real /dashboard. */
+.rec {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0;
+  border-top: 1px solid var(--hairline);
+  align-items: baseline;
+}
+.rec-t {
+  font-weight: 600;
+  font-size: 1rem;
+}
+.rec-t sup {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  margin-left: 3px;
+}
+.rec-p {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.fns {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--hairline-2);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fn {
+  font-family: var(--font-mono);
+  font-size: 0.73rem;
+  line-height: 1.45;
+  color: var(--muted);
+  transition: color 0.15s;
+}
+.fn b {
+  color: var(--accent);
+  font-weight: 700;
+}
+.fn .ok {
+  color: var(--ok);
+}
+.fn.hot {
+  color: var(--ink);
+}
+
+/* The always-dark proof console */
+.console {
+  background: var(--con-bg);
+  border: 1px solid var(--con-edge);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.console-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--con-edge);
+}
+.console-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #2a2f3c;
+}
+.console-ttl {
+  margin-left: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--con-mut);
+}
+.console pre {
+  margin: 0;
+  padding: 20px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.7;
+  color: var(--con-ink);
+}
+.console .c {
+  color: var(--con-mut);
+}
+.console .k {
+  color: var(--con-key);
+}
+.console .s {
+  color: var(--con-str);
+}
+.console .g {
+  color: var(--con-ok);
+}
+.console .dim {
+  color: var(--con-mut);
+}
+
+/* Scroll-reveal (driven by components/ui/Reveal.tsx) */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}
+[data-reveal].in {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
   }
 }

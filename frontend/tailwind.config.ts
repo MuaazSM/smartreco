@@ -27,11 +27,43 @@ const config: Config = {
         "5xl": ["3.5rem", { lineHeight: "1.03", letterSpacing: "-0.02em" }], // 56
       },
       colors: {
-        // Single deliberate accent, swapped light/dark via a CSS var (see globals.css).
+        // Design-system tokens, all swapped light/dark via CSS vars (see globals.css) so
+        // components can say `bg-surface border-hairline text-muted text-accent` and stay
+        // in sync with the theme + the manual toggle. Raw Tailwind palette classes are
+        // avoided in restyled components in favor of these.
+        paper: "var(--paper)",
+        surface: "var(--surface)",
+        ink: "var(--ink)",
+        muted: "var(--muted)",
+        faint: "var(--faint)",
+        hairline: {
+          DEFAULT: "var(--hairline)",
+          strong: "var(--hairline-2)",
+        },
         accent: {
           DEFAULT: "var(--accent)",
           soft: "var(--accent-soft)",
         },
+        ok: "var(--ok)",
+        neg: "var(--neg)",
+        // The always-dark console surface.
+        con: {
+          bg: "var(--con-bg)",
+          panel: "var(--con-panel)",
+          edge: "var(--con-edge)",
+          ink: "var(--con-ink)",
+          mut: "var(--con-mut)",
+          key: "var(--con-key)",
+          ok: "var(--con-ok)",
+          str: "var(--con-str)",
+        },
+      },
+      maxWidth: {
+        page: "var(--maxw)",
+      },
+      boxShadow: {
+        // The soft lift the hero recommendation card sits on in the artifact.
+        artifact: "0 24px 60px -34px rgba(20, 25, 60, 0.28)",
       },
     },
   },
