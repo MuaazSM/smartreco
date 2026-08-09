@@ -9,6 +9,24 @@ returns, and the background worker syncs Qdrant within one drain cycle.
 failure here as P0). It *reads* both stores — active product ids from Postgres, point ids from Qdrant
 — and reports whether they agree, plus how far behind the outbox is. Reading Qdrant from a handler is
 fine; the invariant forbids only *writes* from the request path.
+
+``GET /api/admin/agent-runs`` and ``GET /api/admin/metrics`` are the Observability bonus (PRD §6.8
+/ F8; IMPLEMENTATION.md Phase 9b). Both are pure reads over ``agent_runs`` (+ ``events`` for the
+denominator of ``llm_calls_per_100_events``) — no LLM call, no agent run of their own. ``run_id`` on
+every ``agent-runs`` row is the same id that threads through the API request log line, every agent
+node log line, and the Mesh call log (``app.core.logging.set_run_id``/``get_run_id``, bound once per
+request/run as a contextvar) — grep one ``run_id`` across all three to reconstruct a single run.
+
+LangSmith tracing itself is enabled purely by environment, not by code here: set
+``LANGSMITH_TRACING=true`` (or the LangChain-native ``LANGCHAIN_TRACING_V2=true``) plus
+``LANGSMITH_API_KEY``/``LANGCHAIN_API_KEY`` and ``LANGSMITH_PROJECT=smartreco`` as real process
+environment variables (``app/core/config.py`` already declares matching ``Settings`` fields; note
+that a value only present in ``.env`` and read via pydantic-settings is **not** automatically
+exported to ``os.environ`` for the langsmith/langchain-core SDKs — those must see it in the actual
+process environment, e.g. via shell ``export`` or the hosting platform's env config). Once a key is
+present, ``app/agent/graph.py`` is where a future change would stamp the resulting trace URL onto
+``agent_runs.langsmith_url`` (out of scope here — this module only reads that column, never writes
+it).
 """
 
 from __future__ import annotations
@@ -16,7 +34,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,9 +42,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_role
 from app.api.routes.products import ProductOut
 from app.core.logging import get_logger
-from app.db.models import User, VectorOutbox
+from app.db.models import AgentRun, User, VectorOutbox
 from app.db.session import get_db
 from app.services import catalog
+from app.services import metrics as metrics_service
 from app.vector.qdrant_client import QdrantVectorStore
 
 logger = get_logger(__name__)
@@ -65,6 +84,60 @@ class SyncStatus(BaseModel):
     outbox_lag_seconds: float  # age of the oldest still-pending outbox row (0 when caught up)
     pending_count: int
     failed_count: int
+
+
+class AgentRunOut(BaseModel):
+    """One ``agent_runs`` row for the ``/admin/agent-runs`` console table (PRD §6.8 / A2).
+
+    Every field is a direct column read — Phase 6/7's ``app/agent/graph.py`` populates all of these
+    on every run (``models_used`` carries per-model call counts, prompt/completion tokens, and cost;
+    ``cache_hit`` is ``None`` for a full graph run and ``'l1'``/``'l2'`` for a cache hit).
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    run_id: str
+    user_id: uuid.UUID
+    trigger_reason: str
+    node_path: list[str]
+    retrieval_score: float | None
+    refine_loops: int
+    cache_hit: str | None
+    models_used: dict
+    cost_usd: float
+    latency_ms: int
+    langsmith_url: str | None
+    status: str
+    created_at: datetime
+
+
+class AgentRunsPage(BaseModel):
+    """Paginated, most-recent-first ``agent_runs`` history."""
+
+    runs: list[AgentRunOut]
+    count: int
+    limit: int
+    offset: int
+
+
+class MetricsOut(BaseModel):
+    """System health numbers for the admin console (PRD §6.8 / A3).
+
+    ``llm_calls_per_100_events`` and ``cache_hit_rate`` are the cost-discipline numbers (CLAUDE.md
+    invariant #6: the LLM is not called on every event); ``cost_total_usd``/``cost_median_usd`` come
+    straight from the Mesh-metered per-call accounting on ``agent_runs.cost_usd``. The raw counts are
+    included alongside the ratios so the derived numbers are auditable rather than opaque.
+    """
+
+    llm_calls_per_100_events: float
+    cache_hit_rate: float
+    cost_total_usd: float
+    cost_median_usd: float
+    total_events: int
+    total_runs: int
+    full_runs: int
+    l1_hits: int
+    l2_hits: int
 
 
 @router.post("/products", response_model=ProductOut, status_code=status.HTTP_201_CREATED)
@@ -182,3 +255,54 @@ async def sync_status(
             },
         )
     return result
+
+
+@router.get("/agent-runs", response_model=AgentRunsPage)
+async def list_agent_runs(
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    user_id: uuid.UUID | None = Query(default=None, description="Filter to a single user's runs."),
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(require_role("admin")),
+) -> AgentRunsPage:
+    """Recent LangGraph runs, most-recent first (PRD §6.8 / A2 — "the table a judge screenshots").
+
+    Node path, retrieval score, refine loops, cache layer, per-model tokens/cost, latency, status,
+    and the LangSmith deep link (``None`` until ``LANGSMITH_API_KEY`` is live — see module docstring)
+    are all read straight off ``agent_runs``, which Phase 6/7's ``run_agent`` already writes on every
+    run. This route performs no LLM call and starts no agent run of its own.
+    """
+    stmt = select(AgentRun).order_by(AgentRun.created_at.desc()).limit(limit).offset(offset)
+    if user_id is not None:
+        stmt = stmt.where(AgentRun.user_id == user_id)
+    rows = (await db.execute(stmt)).scalars().all()
+    return AgentRunsPage(
+        runs=[AgentRunOut.model_validate(row) for row in rows],
+        count=len(rows),
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/metrics", response_model=MetricsOut)
+async def system_metrics(
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(require_role("admin")),
+) -> MetricsOut:
+    """System health numbers (PRD §6.8 / A3): LLM-call discipline, cache effectiveness, spend.
+
+    Delegates the aggregation to ``app.services.metrics.compute_metrics`` — see that module for how
+    each number is derived. Pure DB reads over ``agent_runs`` + ``events``; no LLM call.
+    """
+    result = await metrics_service.compute_metrics(db)
+    return MetricsOut(
+        llm_calls_per_100_events=result.llm_calls_per_100_events,
+        cache_hit_rate=result.cache_hit_rate,
+        cost_total_usd=result.cost_total_usd,
+        cost_median_usd=result.cost_median_usd,
+        total_events=result.total_events,
+        total_runs=result.total_runs,
+        full_runs=result.full_runs,
+        l1_hits=result.l1_hits,
+        l2_hits=result.l2_hits,
+    )
