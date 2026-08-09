@@ -156,11 +156,16 @@ def _emergency_profile(ctx: AgentContext) -> dict[str, Any]:
 def _resolve_result(final: dict[str, Any] | None, ctx: AgentContext):
     """Return ``(draft, node_path, score, refine_loops, fallback_used)`` for a finished/timed-out run.
 
-    A completed run yields a grounded draft from state. A timeout (``final is None``) or an empty draft
-    triggers a corpus-derived deterministic fallback so the caller ALWAYS gets a grounded result — the
-    grounding invariant holds even when the graph is cancelled mid-run.
+    A completed run yields a grounded draft from state, but ONLY when the run also marked it ``valid``
+    — meaning the grounding gate passed, or the deterministic ``fallback`` node (grounded by
+    construction) ran, both of which set ``valid=True``. Requiring ``final["valid"]`` here (not merely
+    the presence of a draft) is defense-in-depth for invariant #2: persistence no longer depends on
+    graph topology alone. Even if a future edge let END be reached with an ungrounded/unvalidated
+    draft, we fall through to the corpus-derived fallback rather than return it. A timeout
+    (``final is None``), an empty draft, or an unvalidated draft all take that grounded fallback, so
+    the caller ALWAYS gets a grounded result — never a raw/unvalidated draft.
     """
-    if final and final.get("draft") and final["draft"].get("items"):
+    if final and final.get("valid") and final.get("draft") and final["draft"].get("items"):
         return (
             final["draft"],
             list(final.get("node_path", [])),
@@ -172,7 +177,10 @@ def _resolve_result(final: dict[str, Any] | None, ctx: AgentContext):
     profile = _emergency_profile(ctx)
     candidates = (final.get("candidates") if final else None) or []
     draft = build_fallback_draft(ctx, profile, candidates)
-    node_path = (list(final.get("node_path", [])) if final else []) + ["timeout_fallback"]
+    # ``timeout_fallback`` for a cancelled run (final is None); ``safety_fallback`` when a finished run
+    # somehow left an unvalidated/empty draft (the branch-1 guard above) — either way it is grounded.
+    fallback_label = "timeout_fallback" if final is None else "safety_fallback"
+    node_path = (list(final.get("node_path", [])) if final else []) + [fallback_label]
     score = final.get("retrieval_score") if final else None
     refine_loops = final.get("refine_loops", 0) if final else 0
     return draft, node_path, score, refine_loops, True
@@ -195,7 +203,10 @@ async def _persist(
     """Write the ``agent_runs`` telemetry row and the new current ``recommendations`` row (one tx)."""
     latency_ms = int((time.monotonic() - mono_start) * 1000)
     status = "fallback" if fallback_used else "success"
-    items_enriched = enrich_items(draft.get("items", []), ctx.corpus_by_id)
+    # Persist-time safety net (invariant #2): drop any id not active in this run's catalog snapshot
+    # before writing. Every live path already emits only grounded ids, so this never fires on the happy
+    # path — it is a last line so a future upstream bug can never persist a bare/inactive id.
+    items_enriched = enrich_items(draft.get("items", []), ctx.corpus_by_id, ctx.active_ids)
     models_used = collector.models_used()
     cost_usd = collector.total_cost()
 

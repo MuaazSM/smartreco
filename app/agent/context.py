@@ -258,10 +258,38 @@ def remap_placeholders(items: list[dict[str, Any]], candidate_ids: list[str]) ->
     return remapped
 
 
+_MIN_PERSIST_ITEMS = 3  # the 3-5 item guarantee (mirrors the grounding gate / fallback)
+
+
 def enrich_items(
-    items: list[dict[str, Any]], corpus_by_id: dict[str, ProductDoc]
+    items: list[dict[str, Any]],
+    corpus_by_id: dict[str, ProductDoc],
+    active_ids: set[str] | None = None,
 ) -> list[dict[str, Any]]:
-    """Attach catalog metadata to grounded items for storage/rendering (product_id stays the key)."""
+    """Attach catalog metadata to grounded items for storage/rendering (product_id stays the key).
+
+    Persist-time defense-in-depth (invariant #2): when ``active_ids`` is supplied, items whose
+    ``product_id`` is not active in the run's catalog snapshot are dropped *before* enrichment — a last
+    line so a future upstream bug can never persist a bare/inactive id. Every live path already emits
+    only grounded ids (the grounding gate + the grounded-by-construction fallback), so on those paths
+    nothing is dropped and the output is byte-for-byte unchanged. If filtering ever drops below the
+    3-item guarantee we log it rather than crash (the fallback should have prevented that).
+    """
+    if active_ids is not None:
+        kept = [item for item in items if str(item.get("product_id")) in active_ids]
+        if len(kept) != len(items):
+            logger.warning(
+                "agent.enrich_dropped_inactive_ids",
+                extra={
+                    "extra_fields": {
+                        "dropped": len(items) - len(kept),
+                        "kept": len(kept),
+                        "below_min": len(kept) < _MIN_PERSIST_ITEMS,
+                    }
+                },
+            )
+        items = kept
+
     enriched: list[dict[str, Any]] = []
     for item in items:
         doc = corpus_by_id.get(str(item.get("product_id")))
