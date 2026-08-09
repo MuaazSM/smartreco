@@ -11,6 +11,7 @@
  * policy (Phase 7) is built to produce. Loading is always a skeleton, never a blocking spinner.
  */
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { apiGet, apiPost, ApiError } from "../../lib/api";
@@ -45,6 +46,7 @@ function DashboardSkeleton(): React.ReactElement {
 
 export function DashboardView(): React.ReactElement {
   const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [state, setState] = useState<LoadState>("loading");
   const [rec, setRec] = useState<CurrentRecommendationOut | null>(null);
   const [justUpdated, setJustUpdated] = useState(false);
@@ -91,6 +93,11 @@ export function DashboardView(): React.ReactElement {
     if (updatedTimer.current) clearTimeout(updatedTimer.current);
   }, []);
 
+  // The dashboard requires auth — bounce logged-out visitors to /login rather than showing it.
+  useEffect(() => {
+    if (!authLoading && !user) router.replace("/login");
+  }, [authLoading, user, router]);
+
   async function handleRefresh(): Promise<void> {
     if (refreshing) return;
     setRefreshing(true);
@@ -111,27 +118,11 @@ export function DashboardView(): React.ReactElement {
     }
   }
 
-  if (authLoading) {
+  // While auth resolves, or while redirecting an unauthenticated visitor to /login, show the skeleton.
+  if (authLoading || !user) {
     return (
       <main className="mx-auto max-w-4xl px-6 py-12">
         <DashboardSkeleton />
-      </main>
-    );
-  }
-
-  if (!user) {
-    return (
-      <main className="mx-auto max-w-4xl px-6 py-12">
-        <h1 className="text-2xl font-bold">Your recommendations</h1>
-        <p className="mt-3 text-neutral-600 dark:text-neutral-400">
-          Log in to see a personalized recommendation block built from your activity.
-        </p>
-        <a
-          href="/login"
-          className="mt-4 inline-block rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-neutral-900"
-        >
-          Log in
-        </a>
       </main>
     );
   }
