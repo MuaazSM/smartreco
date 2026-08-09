@@ -4,14 +4,58 @@
 
 :root {
   color-scheme: light dark;
+  --accent: #4f46e5; /* indigo — links, active nav, focus ring, progress */
+  --accent-soft: #eef2ff; /* indigo-50, subtle fills */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent: #a5b4fc; /* indigo-300 — readable accent on near-black */
+    --accent-soft: #1e1b4b; /* indigo-950 */
+  }
 }
 
 body {
   @apply bg-white text-neutral-900 antialiased;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.0625rem; /* 17px base — untyped text was 16, most UI was 14 */
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 @media (prefers-color-scheme: dark) {
   body {
     @apply bg-neutral-950 text-neutral-100;
+  }
+}
+
+/* Serif display voice for the big headlines (page h1s + the recommendation h2). Card titles
+   (h3) intentionally stay in the sans body face for legibility in dense grids. */
+h1,
+h2 {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+  letter-spacing: -0.015em;
+}
+
+/* Accessibility floor: a visible keyboard focus ring everywhere. The app previously had no
+   deliberate focus treatment on any custom button/input/link. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }
