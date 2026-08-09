@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import { AuthProvider } from "../components/AuthProvider";
+import { NavBar } from "../components/NavBar";
 import { TrackerProvider } from "../components/TrackerProvider";
 import "./globals.css";
 
@@ -16,7 +18,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <TrackerProvider>{children}</TrackerProvider>
+        <AuthProvider>
+          <TrackerProvider>
+            <NavBar />
+            {children}
+          </TrackerProvider>
+        </AuthProvider>
       </body>
     </html>
   );
