@@ -49,15 +49,15 @@ export function RecommendationCard({
   }
 
   return (
-    <article className="flex flex-col rounded-xl border border-neutral-200 p-5 dark:border-neutral-800">
+    <article className="flex flex-col rounded-xl border border-neutral-200 p-5 transition-shadow hover:border-neutral-300 hover:shadow-md dark:border-neutral-800 dark:hover:border-neutral-700">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="font-semibold leading-snug">{item.title || item.product_id}</h3>
-          <p className="mt-0.5 text-xs uppercase tracking-wide text-neutral-500">
+          <h3 className="text-lg font-semibold leading-snug">{item.title || item.product_id}</h3>
+          <p className="mt-0.5 font-mono text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
             {item.category || "course"} · {item.level || "any level"}
           </p>
         </div>
-        <span className="whitespace-nowrap text-sm font-medium text-neutral-700 dark:text-neutral-300">
+        <span className="whitespace-nowrap font-mono text-sm font-medium text-neutral-700 dark:text-neutral-300">
           {formatPrice(item.price_cents)}
         </span>
       </div>
@@ -70,7 +70,7 @@ export function RecommendationCard({
       <div className="mt-4 flex items-center justify-between">
         <a
           href={`/catalog/${item.product_id}`}
-          className="text-sm font-medium underline underline-offset-2"
+          className="text-sm font-medium text-accent underline-offset-2 hover:underline"
           onClick={() => tracker.trackClick(item.product_id, { source: "dashboard_card" })}
         >
           View course
@@ -82,7 +82,7 @@ export function RecommendationCard({
             aria-pressed={signal === "up"}
             disabled={submitting}
             onClick={() => sendFeedback("up")}
-            className={`rounded-md border px-2.5 py-1 text-sm transition-colors ${
+            className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
               signal === "up"
                 ? "border-emerald-600 bg-emerald-50 text-emerald-700 dark:bg-emerald-950"
                 : "border-neutral-300 dark:border-neutral-700"
@@ -96,7 +96,7 @@ export function RecommendationCard({
             aria-pressed={signal === "down"}
             disabled={submitting}
             onClick={() => sendFeedback("down")}
-            className={`rounded-md border px-2.5 py-1 text-sm transition-colors ${
+            className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
               signal === "down"
                 ? "border-red-600 bg-red-50 text-red-700 dark:bg-red-950"
                 : "border-neutral-300 dark:border-neutral-700"
@@ -106,7 +106,7 @@ export function RecommendationCard({
           </button>
         </div>
       </div>
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p>}
     </article>
   );
 }

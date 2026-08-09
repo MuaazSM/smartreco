@@ -17,16 +17,16 @@ export function ProductCard({ product }: { product: ProductOut }): React.ReactEl
     <Link
       href={`/catalog/${product.id}`}
       onClick={() => tracker.trackClick(product.id, { source: "catalog_grid" })}
-      className="flex flex-col rounded-xl border border-neutral-200 p-4 transition-colors hover:border-neutral-400 dark:border-neutral-800 dark:hover:border-neutral-600"
+      className="flex flex-col rounded-xl border border-neutral-200 p-4 transition-colors transition-shadow hover:border-neutral-400 hover:shadow-md dark:border-neutral-800 dark:hover:border-neutral-600"
     >
-      <p className="text-xs uppercase tracking-wide text-neutral-500">
+      <p className="font-mono text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
         {product.category} · {product.level}
       </p>
-      <h3 className="mt-1 font-semibold leading-snug">{product.title}</h3>
+      <h3 className="mt-1 text-lg font-semibold leading-snug">{product.title}</h3>
       <p className="mt-2 line-clamp-2 flex-1 text-sm text-neutral-600 dark:text-neutral-400">
         {product.description}
       </p>
-      <p className="mt-3 text-sm font-medium">{formatPrice(product.price_cents)}</p>
+      <p className="mt-3 font-mono text-sm font-medium">{formatPrice(product.price_cents)}</p>
     </Link>
   );
 }

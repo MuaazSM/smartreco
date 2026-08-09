@@ -27,7 +27,7 @@ export function TrackingDemo(): React.ReactElement {
   return (
     <section className="mt-10 rounded-xl border border-neutral-200 p-6 dark:border-neutral-800">
       <h2 className="text-lg font-semibold">Tracker demo</h2>
-      <p className="mt-1 text-sm text-neutral-500">
+      <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
         Every interaction below is throttled/debounced, buffered off the main thread, and batched.
       </p>
 

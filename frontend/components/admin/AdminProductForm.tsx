@@ -101,7 +101,7 @@ export function AdminProductForm({
           required
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="mt-1 w-full rounded-md border border-neutral-300 bg-transparent px-3 py-1.5 text-sm dark:border-neutral-700"
+          className="mt-1 w-full rounded-md border border-neutral-300 bg-transparent px-3 py-2.5 text-sm dark:border-neutral-700"
         />
       </label>
 
@@ -111,7 +111,7 @@ export function AdminProductForm({
           required
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          className="mt-1 w-full rounded-md border border-neutral-300 bg-transparent px-3 py-1.5 text-sm dark:border-neutral-700"
+          className="mt-1 w-full rounded-md border border-neutral-300 bg-transparent px-3 py-2.5 text-sm dark:border-neutral-700"
         />
       </label>
 
@@ -121,7 +121,7 @@ export function AdminProductForm({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={2}
-          className="mt-1 w-full rounded-md border border-neutral-300 bg-transparent px-3 py-1.5 text-sm dark:border-neutral-700"
+          className="mt-1 w-full rounded-md border border-neutral-300 bg-transparent px-3 py-2.5 text-sm dark:border-neutral-700"
         />
       </label>
 
@@ -130,7 +130,7 @@ export function AdminProductForm({
         <select
           value={level}
           onChange={(e) => setLevel(e.target.value as (typeof LEVELS)[number])}
-          className="mt-1 w-full rounded-md border border-neutral-300 bg-transparent px-3 py-1.5 text-sm dark:border-neutral-700"
+          className="mt-1 w-full rounded-md border border-neutral-300 bg-transparent px-3 py-2.5 text-sm dark:border-neutral-700"
         >
           {LEVELS.map((l) => (
             <option key={l} value={l}>
@@ -148,7 +148,7 @@ export function AdminProductForm({
           step="0.01"
           value={priceDollars}
           onChange={(e) => setPriceDollars(e.target.value)}
-          className="mt-1 w-full rounded-md border border-neutral-300 bg-transparent px-3 py-1.5 text-sm dark:border-neutral-700"
+          className="mt-1 w-full rounded-md border border-neutral-300 bg-transparent px-3 py-2.5 text-sm dark:border-neutral-700"
         />
       </label>
 
@@ -157,7 +157,7 @@ export function AdminProductForm({
         <input
           value={tags}
           onChange={(e) => setTags(e.target.value)}
-          className="mt-1 w-full rounded-md border border-neutral-300 bg-transparent px-3 py-1.5 text-sm dark:border-neutral-700"
+          className="mt-1 w-full rounded-md border border-neutral-300 bg-transparent px-3 py-2.5 text-sm dark:border-neutral-700"
         />
       </label>
 
@@ -166,7 +166,7 @@ export function AdminProductForm({
         Active
       </label>
 
-      {error && <p className="col-span-full text-sm text-red-600">{error}</p>}
+      {error && <p className="col-span-full text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       <div className="col-span-full flex gap-2">
         <button

@@ -49,12 +49,12 @@ export default async function ProductDetailPage({
         </a>
         <div className="mt-4 flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-wide text-neutral-500">
+            <p className="font-mono text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
               {product.category} · {product.level}
             </p>
-            <h1 className="mt-1 text-2xl font-bold">{product.title}</h1>
+            <h1 className="mt-1 text-3xl font-bold">{product.title}</h1>
           </div>
-          <span className="whitespace-nowrap text-lg font-semibold">
+          <span className="whitespace-nowrap font-mono text-xl font-semibold">
             {formatPrice(product.price_cents)}
           </span>
         </div>

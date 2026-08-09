@@ -90,9 +90,9 @@ export function RegisterForm(): React.ReactElement {
           onChange={(e) => setPassword(e.target.value)}
           className="mt-1 w-full rounded-md border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-700"
         />
-        <p className="mt-1 text-xs text-neutral-500">At least 8 characters.</p>
+        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">At least 8 characters.</p>
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
       <button
         type="submit"
         disabled={submitting}
@@ -102,7 +102,7 @@ export function RegisterForm(): React.ReactElement {
       </button>
       <p className="text-center text-sm text-neutral-500">
         Already have an account?{" "}
-        <a href="/login" className="underline underline-offset-2">
+        <a href="/login" className="text-accent underline-offset-2 hover:underline">
           Log in
         </a>
       </p>

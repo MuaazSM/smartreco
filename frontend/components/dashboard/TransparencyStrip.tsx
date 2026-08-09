@@ -27,16 +27,21 @@ export function TransparencyStrip({ transparency }: { transparency: Transparency
     <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900">
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          Based on <span className="font-medium text-neutral-900 dark:text-neutral-100">{transparency.total_events}</span>{" "}
+          Based on{" "}
+          <span className="font-mono font-medium text-neutral-900 dark:text-neutral-100">
+            {transparency.total_events}
+          </span>{" "}
           actions ·{" "}
-          <span className="font-medium text-neutral-900 dark:text-neutral-100">{transparency.searches}</span> searches
-          · updated {formatRelativeTime(transparency.last_generated_at)}
+          <span className="font-mono font-medium text-neutral-900 dark:text-neutral-100">
+            {transparency.searches}
+          </span>{" "}
+          searches · updated {formatRelativeTime(transparency.last_generated_at)}
         </p>
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
-          className="text-sm font-medium underline underline-offset-2"
+          className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm font-medium transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
         >
           {expanded ? "Hide what we noticed" : "What we noticed about you"}
         </button>
@@ -52,12 +57,15 @@ export function TransparencyStrip({ transparency }: { transparency: Transparency
             <ul className="space-y-1.5">
               {categories.map(([category, weight]) => (
                 <li key={category} className="flex items-center gap-2 text-sm">
-                  <span className="w-32 shrink-0 truncate text-neutral-700 dark:text-neutral-300">
+                  <span
+                    title={category}
+                    className="w-32 shrink-0 truncate text-neutral-700 dark:text-neutral-300"
+                  >
                     {category}
                   </span>
                   <span className="h-2 flex-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
                     <span
-                      className="block h-full rounded-full bg-neutral-900 dark:bg-white"
+                      className="block h-full rounded-full bg-accent"
                       style={{ width: `${Math.max(6, Math.round((weight / maxWeight) * 100))}%` }}
                     />
                   </span>

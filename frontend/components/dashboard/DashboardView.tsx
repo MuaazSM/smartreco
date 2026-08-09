@@ -156,7 +156,8 @@ export function DashboardView(): React.ReactElement {
           role="status"
           className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
         >
-          Updated just now · based on your last {rec.transparency.total_events} actions
+          Updated just now · based on your last{" "}
+          <span className="font-mono">{rec.transparency.total_events}</span> actions
         </p>
       )}
 
@@ -192,7 +193,7 @@ export function DashboardView(): React.ReactElement {
 
       {state === "ready" && rec && (
         <>
-          <h2 className="mt-6 text-xl font-semibold">{rec.headline}</h2>
+          <h2 className="mt-6 text-2xl font-semibold sm:text-3xl">{rec.headline}</h2>
           <p className="mt-2 text-neutral-600 dark:text-neutral-400">{rec.narrative}</p>
 
           <TransparencyStrip transparency={rec.transparency} />

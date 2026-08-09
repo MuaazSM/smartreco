@@ -74,24 +74,24 @@ export function SyncStatusPanel(): React.ReactElement {
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
         <div>
-          <dt className="text-neutral-500">Missing in vector</dt>
-          <dd className="font-medium">{status.missing_in_vector.length}</dd>
+          <dt className="text-neutral-600 dark:text-neutral-400">Missing in vector</dt>
+          <dd className="font-mono font-medium">{status.missing_in_vector.length}</dd>
         </div>
         <div>
-          <dt className="text-neutral-500">Orphaned in vector</dt>
-          <dd className="font-medium">{status.orphaned_in_vector.length}</dd>
+          <dt className="text-neutral-600 dark:text-neutral-400">Orphaned in vector</dt>
+          <dd className="font-mono font-medium">{status.orphaned_in_vector.length}</dd>
         </div>
         <div>
-          <dt className="text-neutral-500">Pending outbox</dt>
-          <dd className="font-medium">{status.pending_count}</dd>
+          <dt className="text-neutral-600 dark:text-neutral-400">Pending outbox</dt>
+          <dd className="font-mono font-medium">{status.pending_count}</dd>
         </div>
         <div>
-          <dt className="text-neutral-500">Failed outbox</dt>
-          <dd className="font-medium">{status.failed_count}</dd>
+          <dt className="text-neutral-600 dark:text-neutral-400">Failed outbox</dt>
+          <dd className="font-mono font-medium">{status.failed_count}</dd>
         </div>
       </dl>
       <p className="mt-2 text-xs text-neutral-500">
-        Outbox lag: {status.outbox_lag_seconds.toFixed(1)}s
+        Outbox lag: <span className="font-mono">{status.outbox_lag_seconds.toFixed(1)}s</span>
       </p>
     </div>
   );

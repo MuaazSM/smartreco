@@ -149,7 +149,9 @@ export function CatalogBrowser({
       </div>
 
       {!loading && data.items.length === 0 && (
-        <p className="mt-6 text-center text-neutral-500">No courses match your filters.</p>
+        <p className="mt-6 text-center text-neutral-600 dark:text-neutral-400">
+          No courses match your filters.
+        </p>
       )}
 
       {data.total > data.page_size && (
