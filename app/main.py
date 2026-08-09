@@ -11,26 +11,42 @@ products/admin in Phase 4, events/recommendations in Phases 5-7).
 from __future__ import annotations
 
 import asyncio
+import os
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator
 
 import asyncpg
 import httpx
 import redis.asyncio as aioredis
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from qdrant_client import AsyncQdrantClient
 
+from app.api.routes.admin import router as admin_router
 from app.api.routes.auth import router as auth_router
+from app.api.routes.products import router as products_router
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger, set_run_id
 from app.db.qdrant_bootstrap import bootstrap_qdrant
 from app.db.session import dispose_engine, engine
+from app.llm import model_router
+from app.services import outbox_worker
+from app.vector.qdrant_client import QdrantVectorStore
 
 configure_logging(settings.log_level)
 logger = get_logger(__name__)
 
 _HEALTH_CHECK_TIMEOUT_SECONDS = 2.0
+
+# The 5s outbox drain (PRD §6.2, §13.3). Read straight from the env in the lifespan rather than
+# adding a config field (this phase owns no app/core/config.py change); default on. Tests set it to
+# "false" so the background timer never races their deterministic, direct drain_outbox_once() calls.
+_OUTBOX_DRAIN_INTERVAL_SECONDS = 5
+
+
+def _run_scheduler_enabled() -> bool:
+    return os.getenv("SMARTRECO_RUN_SCHEDULER", "true").strip().lower() not in {"false", "0", "no"}
 
 
 @asynccontextmanager
@@ -66,7 +82,49 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             "qdrant.bootstrap_failed",
             extra={"extra_fields": {"detail": f"{type(exc).__name__}: {exc}"}},
         )
+
+    # Prime Mesh's free-tier catalog so live runs prefer free models (no-op fixture under
+    # MESH_DISABLED — makes zero network calls). Non-fatal: resolve() falls back to paid if unprimed.
+    try:
+        await model_router.refresh_free_models()
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "mesh.free_models_refresh_failed",
+            extra={"extra_fields": {"detail": f"{type(exc).__name__}: {exc}"}},
+        )
+
+    # The transactional-outbox drain (invariant #3): in-process, continuous, every 5s. Must never
+    # depend on an idle-sleeping host (PRD §13.3) — kept here even in deployment. Gated by env so the
+    # test suite can disable the background timer.
+    scheduler: AsyncIOScheduler | None = None
+    worker_store: QdrantVectorStore | None = None
+    if _run_scheduler_enabled():
+        worker_store = QdrantVectorStore()
+        scheduler = AsyncIOScheduler()
+        scheduler.add_job(
+            outbox_worker.scheduled_drain,
+            trigger="interval",
+            seconds=_OUTBOX_DRAIN_INTERVAL_SECONDS,
+            args=[worker_store],
+            id="outbox_drain",
+            max_instances=1,
+            coalesce=True,
+            replace_existing=True,
+        )
+        scheduler.start()
+        logger.info(
+            "outbox.scheduler_started",
+            extra={"extra_fields": {"interval_seconds": _OUTBOX_DRAIN_INTERVAL_SECONDS}},
+        )
+    else:
+        logger.info("outbox.scheduler_disabled", extra={"extra_fields": {"reason": "env flag"}})
+
     yield
+
+    if scheduler is not None:
+        scheduler.shutdown(wait=False)
+    if worker_store is not None:
+        await worker_store.close()
     await dispose_engine()
     logger.info("smartreco.shutdown")
 
@@ -82,6 +140,8 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(products_router)
+app.include_router(admin_router)
 
 
 def _asyncpg_dsn(database_url: str) -> str:
