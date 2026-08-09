@@ -134,12 +134,23 @@ def free_model_ids() -> frozenset[str]:
     return _live_free_models
 
 
+def _tier_override(tier: str) -> str | None:
+    """An explicit per-tier model id from settings, if configured (else None → free-first walk)."""
+    if tier == "cheap":
+        return settings.mesh_cheap_model
+    if tier == "quality":
+        return settings.mesh_quality_model
+    return None
+
+
 def resolve(node: str, tier: str | None = None) -> str:
     """Resolve the Mesh model id for ``node``. The single model-selection point (CLAUDE.md #1).
 
-    Walks ``FREE_PREFERENCE`` and returns the first id Mesh currently lists as free; if none are free
-    (or the catalog is not yet primed) falls back to ``PAID_FALLBACK[tier]``. Embeddings always use
-    ``EMBEDDING_MODEL``. ``tier`` defaults to the node's tier in ``NODE_TIERS`` (``cheap`` if unknown).
+    Order: an explicit ``settings.mesh_{cheap,quality}_model`` override (used to pin fast paid models
+    once a balance exists) wins; otherwise walk ``FREE_PREFERENCE`` and return the first id Mesh
+    currently lists as free; if none are free (or the catalog is not yet primed) fall back to
+    ``PAID_FALLBACK[tier]``. Embeddings always use ``EMBEDDING_MODEL``. ``tier`` defaults to the node's
+    tier in ``NODE_TIERS`` (``cheap`` if unknown).
     """
     if node == "embeddings":
         return EMBEDDING_MODEL
@@ -147,6 +158,10 @@ def resolve(node: str, tier: str | None = None) -> str:
     resolved_tier = tier or NODE_TIERS.get(node, "cheap")
     if resolved_tier not in PAID_FALLBACK:
         raise ValueError(f"unknown tier {resolved_tier!r} for node {node!r}")
+
+    override = _tier_override(resolved_tier)
+    if override:
+        return override
 
     free = free_model_ids()
     for candidate in FREE_PREFERENCE:

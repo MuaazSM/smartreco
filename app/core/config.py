@@ -24,6 +24,8 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 _BLANK_MEANS_UNSET_FIELDS = (
     "qdrant_api_key",
     "mesh_api_key",
+    "mesh_cheap_model",
+    "mesh_quality_model",
     "smtp_host",
     "smtp_user",
     "smtp_password",
@@ -64,6 +66,17 @@ class Settings(BaseSettings):
     mesh_api_key: str | None = None
     mesh_base_url: str = "https://api.meshapi.ai/v1"
     mesh_disabled: bool = False  # true only locally, per PRD §13.4
+    # Optional per-tier model override. Empty = the free-first router in app.llm.model_router decides
+    # (the default; keeps CI/offline behavior). Point these at fast paid models once the Mesh account
+    # has a balance so the agent finishes inside its time budget instead of timing out to the
+    # deterministic fallback. Still routed through Mesh and still the router's single decision point
+    # (invariant #1) — these are Mesh model ids, resolved by model_router.resolve().
+    mesh_cheap_model: str | None = None
+    mesh_quality_model: str | None = None
+    # Agent wall-clock cap (seconds). Default 25.0 keeps the spec/CI budget; raise it locally when the
+    # Mesh gateway is slow so the full seven-node graph finishes instead of timing out to the
+    # deterministic fallback. Still a hard, bounded cap (asyncio.wait_for in app/agent/graph.py).
+    agent_timeout_seconds: float = 25.0
 
     # --- auth (bodies implemented in Phase 3) ---
     jwt_secret: str = "dev-insecure-secret-change-me"

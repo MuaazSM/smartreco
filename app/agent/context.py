@@ -23,6 +23,7 @@ from typing import Any
 
 from sqlalchemy import select
 
+from app.core.config import settings
 from app.core.logging import get_logger
 from app.db.models import Event, Product
 from app.llm.mesh import MeshUsage
@@ -32,8 +33,10 @@ from app.vector.qdrant_client import QdrantVectorStore, VectorStore
 
 logger = get_logger(__name__)
 
-# --- hard caps (non-negotiable — unbounded loops burn quota and hang the demo, PRD §6.4) ---
-TOTAL_TIMEOUT_SECONDS = 25.0
+# --- hard caps (bounded — unbounded loops burn quota and hang the demo, PRD §6.4) ---
+# The wall-clock cap is configurable (default 25.0) so a slow Mesh gateway doesn't force every run to
+# the fallback; it stays a hard, bounded timeout regardless of the value.
+TOTAL_TIMEOUT_SECONDS = settings.agent_timeout_seconds
 GRADE_THRESHOLD = 0.7
 MAX_REFINE_LOOPS = 2
 MAX_GENERATE_ATTEMPTS = 2  # initial generation + exactly one retry
