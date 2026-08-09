@@ -1,0 +1,64 @@
+<!--
+  SmartReco daily digest (PRD §6.7 / F7). Table-based layout intentionally — email clients (Outlook,
+  Gmail's clipped CSS) render flexbox/grid unreliably, so this stays deliberately simple: one column,
+  inline-ish styles, no external assets, no JS. Jinja2 autoescapes every variable (see
+  app/scheduler/digest.py's Environment(autoescape=...)), so course titles/reasons from the catalog
+  or the agent's narrative can never inject markup here.
+-->
+<div style="margin:0; padding:0; background-color:#f4f4f7; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7; padding:24px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:8px; overflow:hidden; max-width:600px; width:100%;">
+          <tr>
+            <td style="background-color:#111827; padding:20px 32px;">
+              <span style="color:#ffffff; font-size:18px; font-weight:700; letter-spacing:0.02em;">SmartReco</span>
+              <span style="color:#9ca3af; font-size:12px; float:right; margin-top:4px;">{{ generated_at }}</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px 32px 8px 32px;">
+              <p style="margin:0 0 4px 0; color:#374151; font-size:14px;">Hi {{ display_name }},</p>
+              <p style="margin:0 0 20px 0; color:#4b5563; font-size:15px; line-height:1.5;">{{ hook }}</p>
+              <h1 style="margin:0 0 12px 0; color:#111827; font-size:22px; line-height:1.3;">{{ headline }}</h1>
+              <p style="margin:0 0 24px 0; color:#374151; font-size:15px; line-height:1.6;">{{ narrative }}</p>
+            </td>
+          </tr>
+          {% for item in items %}
+          <tr>
+            <td style="padding:0 32px 16px 32px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb; border-radius:6px;">
+                <tr>
+                  <td style="padding:16px 20px;">
+                    <p style="margin:0 0 4px 0; color:#111827; font-size:16px; font-weight:600;">{{ item.title or item.product_id }}</p>
+                    <p style="margin:0 0 8px 0; color:#6b7280; font-size:12px; text-transform:uppercase; letter-spacing:0.04em;">
+                      {{ item.category }}{% if item.level %} &middot; {{ item.level }}{% endif %}{% if item.price_cents %} &middot; ${{ "%.2f"|format(item.price_cents / 100) }}{% endif %}
+                    </p>
+                    <p style="margin:0; color:#374151; font-size:14px; line-height:1.5;">{{ item.reason }}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td style="padding:0 32px 16px 32px; color:#6b7280; font-size:14px;">
+              No fresh picks today — check back after a bit more browsing.
+            </td>
+          </tr>
+          {% endfor %}
+          <tr>
+            <td style="padding:24px 32px 8px 32px; border-top:1px solid #e5e7eb;">
+              <p style="margin:0; color:#9ca3af; font-size:12px; line-height:1.6;">
+                Sent because you're active on SmartReco and opted in to the daily digest
+                (trigger: {{ trigger_reason }}).
+                <a href="{{ unsubscribe_url }}" style="color:#6366f1; text-decoration:underline;">Unsubscribe</a>
+                from this digest at any time.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</div>
