@@ -115,6 +115,22 @@ class Settings(BaseSettings):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
 
+    @field_validator("database_url", mode="after")
+    @classmethod
+    def _ensure_asyncpg_driver(cls, value: str) -> str:
+        """Force the async driver on the DB URL. Managed hosts (Render, Neon, Heroku) hand out
+        ``postgres://`` or ``postgresql://``; the app's engine and Alembic both need
+        ``postgresql+asyncpg://``. Idempotent — an explicit ``+driver`` is left untouched, so the
+        local ``postgresql+asyncpg://`` default is unaffected."""
+        for scheme in ("postgresql+", "postgres+"):
+            if value.startswith(scheme):
+                return value
+        if value.startswith("postgresql://"):
+            return "postgresql+asyncpg://" + value[len("postgresql://") :]
+        if value.startswith("postgres://"):
+            return "postgresql+asyncpg://" + value[len("postgres://") :]
+        return value
+
     @model_validator(mode="after")
     def _blank_optional_secrets_are_unset(self) -> "Settings":
         for name in _BLANK_MEANS_UNSET_FIELDS:

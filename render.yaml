@@ -1,21 +1,40 @@
-# Render Blueprint (PRD §13.1) — one Docker web service for the FastAPI backend + in-process
+# Render Blueprint (PRD §13.1) — a Docker web service for the FastAPI backend + in-process
 # APScheduler outbox drain (invariant #3: the 5s drain must be continuous, so it stays in-process
-# even in production — see app/main.py's lifespan and PRD §13.3).
+# even in production — see app/main.py's lifespan and PRD §13.3), plus a Render-managed Postgres and
+# Key Value (Redis) provisioned by this same blueprint and auto-wired below.
 #
-# Postgres (Neon), Redis (Upstash) and Qdrant (Qdrant Cloud) are EXTERNAL managed services — this
-# blueprint does not provision them. Create each one separately (free tiers cover a 40-item catalog
-# comfortably) and paste their connection strings into the `sync: false` env vars below via the
-# Render dashboard (this service → Environment) after the blueprint is applied.
+# What this blueprint provisions: the backend web service, a free Postgres, and a free Key Value
+# store. DATABASE_URL and REDIS_URL are injected automatically via fromDatabase/fromService — no
+# manual paste. Only Qdrant Cloud + Mesh are external: paste QDRANT_URL, QDRANT_API_KEY,
+# MESH_API_KEY (and FRONTEND_URL once Vercel is up) into the `sync: false` vars via the dashboard.
+#
+# Free-tier notes: the web service sleeps after ~15 min idle (cold start on the next request; the
+# outbox drain catches up on wake) and the free Postgres expires ~30 days after creation — both fine
+# for a demo. The connection strings are private-network URLs; the backend rewrites `postgresql://`
+# to the asyncpg driver in app/core/config.py.
 #
 # Deploy: Render dashboard → New → Blueprint → point at this repo → Apply. Full numbered walkthrough
-# (provisioning Neon/Upstash/Qdrant Cloud, running the one-time seed, wiring the Vercel frontend and
-# the GitHub Actions digest cron) is in README.md §8.
+# (the one-time seed, wiring the Vercel frontend and the GitHub Actions digest cron) is in README.md §8.
 #
 # Every key below matches a field on app/core/config.py's `Settings` exactly (env var = field name
 # upper-cased; pydantic-settings is case-insensitive) — see .env.example for the local-dev values
 # these override.
 
+databases:
+  - name: smartreco-db
+    plan: free
+    databaseName: smartreco
+    user: smartreco
+
 services:
+  # Redis-compatible Key Value (Valkey) for the L2 semantic cache and the regeneration lock.
+  # ipAllowList: [] = reachable only over Render's private network (the backend connects internally).
+  - type: keyvalue
+    name: smartreco-redis
+    plan: free
+    ipAllowList: []
+    maxmemoryPolicy: allkeys-lru
+
   - type: web
     name: smartreco-backend
     runtime: docker
@@ -34,20 +53,25 @@ services:
         value: SmartReco
       # PORT is injected by Render itself; docker-entrypoint.sh reads it via ${PORT:-8000}.
 
-      # --- database — Neon (external, PRD §13.1). Paste the Neon connection string rewritten to
-      # the postgresql+asyncpg:// driver, with ?sslmode=require appended (PRD §13.4). ---
+      # --- database — Render-managed Postgres (provisioned above), auto-wired over the private
+      # network. connectionString is `postgresql://…`; config.py rewrites it to the asyncpg driver. ---
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: smartreco-db
+          property: connectionString
 
-      # --- vector store — Qdrant Cloud (external) ---
+      # --- vector store — Qdrant Cloud (external; paste in the dashboard) ---
       - key: QDRANT_URL
         sync: false
       - key: QDRANT_API_KEY
         sync: false
 
-      # --- cache / locks — Upstash Redis (external) ---
+      # --- cache / locks — Render-managed Key Value (provisioned above), auto-wired ---
       - key: REDIS_URL
-        sync: false
+        fromService:
+          name: smartreco-redis
+          type: keyvalue
+          property: connectionString
 
       # --- mesh api — the ONLY LLM/embedding provider (CLAUDE.md invariant #1) ---
       - key: MESH_API_KEY
@@ -56,6 +80,14 @@ services:
         value: https://api.meshapi.ai/v1
       - key: MESH_DISABLED
         value: "false"
+      # Pin fast paid models + a longer wall-clock cap so the agent finishes within budget on Mesh's
+      # slow gateway instead of timing out to the deterministic fallback (see .env.example).
+      - key: MESH_CHEAP_MODEL
+        value: openai/gpt-4o-mini
+      - key: MESH_QUALITY_MODEL
+        value: openai/gpt-4.1-mini
+      - key: AGENT_TIMEOUT_SECONDS
+        value: "60"
 
       # --- auth ---
       - key: JWT_SECRET
