@@ -135,12 +135,15 @@ async def update_product(
     price_cents: int = _UNSET,
     is_active: bool = _UNSET,
 ) -> Product:
-    """Apply the provided fields, recompute ``content_hash``, and enqueue an ``upsert`` only if the
-    vector store's view of the product actually changed.
+    """Apply the provided fields, recompute ``content_hash``, and enqueue the outbox op that keeps
+    Qdrant consistent with the invariant "a point exists iff the product is active".
 
-    Content fields (title/description/category/tags/level) move ``content_hash`` → re-embed on drain.
-    Payload-only fields (``price_cents``/``is_active``) re-sync the point payload without re-embedding
-    (the worker's ``content_hash`` cache hits). A no-op update enqueues nothing.
+    An ``is_active`` transition dominates: active→inactive enqueues a ``delete`` (the point is removed,
+    exactly as ``delete_product`` does — so deactivating via PATCH can never leave an orphaned point);
+    inactive→active enqueues an ``upsert`` to re-add it. While the product stays active, an ``upsert``
+    is enqueued only if the embeddable content changed (→ re-embed on drain) or ``price_cents`` moved
+    (payload refresh; re-embed skipped via the worker's ``content_hash`` cache). While it stays
+    inactive there is no point, so nothing is enqueued. A no-op update enqueues nothing.
     """
     product = await session.get(Product, _as_uuid(product_id))
     if product is None:
@@ -175,23 +178,42 @@ async def update_product(
     new_hash = embeddings.content_hash_for(embed_text)
 
     content_changed = new_hash != prev_hash
-    payload_changed = (
-        content_changed
-        or product.price_cents != prev_price
-        or product.is_active != prev_active
-    )
-
     if content_changed:
+        # Keep content_hash current even when deactivating, so a later reactivation compares cleanly.
         product.content_hash = new_hash
 
-    if payload_changed:
-        outbox = VectorOutbox(
-            product_id=product.id,
-            op="upsert",
-            payload=_upsert_outbox_payload(product, embed_text),
-            status="pending",
+    # Pick the outbox op that preserves "a Qdrant point exists iff the product is active". An
+    # is_active transition dominates: True->False must DELETE the point (not upsert an inactive one,
+    # which would linger forever as an orphan and break sync-status), False->True re-adds it. While
+    # the product stays active, sync only when the point's vector/payload actually changed; while it
+    # stays inactive there is no point, so nothing needs syncing.
+    now_active = product.is_active
+    op: str | None = None
+    if prev_active and not now_active:
+        op = "delete"
+    elif not prev_active and now_active:
+        op = "upsert"
+    elif now_active and (content_changed or product.price_cents != prev_price):
+        op = "upsert"
+
+    if op == "upsert":
+        session.add(
+            VectorOutbox(
+                product_id=product.id,
+                op="upsert",
+                payload=_upsert_outbox_payload(product, embed_text),
+                status="pending",
+            )
         )
-        session.add(outbox)
+    elif op == "delete":
+        session.add(
+            VectorOutbox(
+                product_id=product.id,
+                op="delete",
+                payload={"product_id": str(product.id)},
+                status="pending",
+            )
+        )
 
     await session.commit()
     await session.refresh(product)
@@ -201,7 +223,7 @@ async def update_product(
             "extra_fields": {
                 "product_id": str(product.id),
                 "content_changed": content_changed,
-                "enqueued": payload_changed,
+                "enqueued_op": op,
             }
         },
     )
