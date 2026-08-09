@@ -28,8 +28,8 @@ os.environ.setdefault("SMARTRECO_RUN_SCHEDULER", "false")
 
 import pytest  # noqa: E402
 
-from app.agent.context import AgentContext  # noqa: E402
-from app.agent.graph import build_agent_graph, initial_state  # noqa: E402
+from app.agent.context import AgentContext, enrich_items  # noqa: E402
+from app.agent.graph import _resolve_result, build_agent_graph, initial_state  # noqa: E402
 from app.agent.nodes.validate_grounding import _validate  # noqa: E402
 from app.agent.schemas import GradeOutput  # noqa: E402
 from app.llm import mesh  # noqa: E402
@@ -213,6 +213,92 @@ async def test_refine_loop_is_visible_and_capped_at_two(monkeypatch: pytest.Monk
     assert path.count("generate") >= 1
     assert 3 <= len(final["draft"]["items"]) <= 5
     assert all(i["product_id"] in {d.product_id for d in corpus} for i in final["draft"]["items"])
+
+
+# --------------------------------------------------------------------------------------------------
+# Tests — persistence-boundary defense-in-depth (invariant #2, belt-and-suspenders)
+# --------------------------------------------------------------------------------------------------
+def test_resolve_result_rejects_unvalidated_draft_and_falls_back_grounded() -> None:
+    """Branch-1 guard: a finished run that carries a draft but is NOT marked ``valid`` must never be
+    returned/persisted — ``_resolve_result`` falls through to the grounded corpus/top-K fallback. This
+    makes persistence independent of graph topology (an ungrounded id can never reach the DB)."""
+    corpus = _corpus()
+    catalog_ids = {doc.product_id for doc in corpus}
+    ctx = _make_ctx(corpus, remap=True)
+
+    # A hypothetical finished state where an ungrounded id slipped through with valid=False.
+    final = {
+        "valid": False,
+        "draft": {
+            "headline": "h",
+            "narrative": "n",
+            "items": [{"product_id": "ghost-not-in-catalog", "reason": "hallucinated"}],
+        },
+        "candidates": [],
+        "node_path": [
+            "build_profile", "plan_queries", "retrieve", "grade_retrieval",
+            "generate", "validate_grounding",
+        ],
+        "retrieval_score": 0.9,
+        "refine_loops": 0,
+        "fallback_used": False,
+    }
+    draft, node_path, _score, _loops, fallback_used = _resolve_result(final, ctx)
+    items = draft["items"]
+    assert 3 <= len(items) <= 5
+    # Not one ungrounded id survives; the unvalidated draft is discarded entirely.
+    assert "ghost-not-in-catalog" not in {i["product_id"] for i in items}
+    assert all(i["product_id"] in catalog_ids for i in items)
+    assert fallback_used is True
+    assert node_path[-1] == "safety_fallback"
+
+
+def test_resolve_result_returns_validated_draft_unchanged() -> None:
+    """The happy path is untouched: a draft the run marked ``valid`` is returned as-is (no fallback)."""
+    corpus = _corpus()
+    ctx = _make_ctx(corpus, remap=True)
+    final = {
+        "valid": True,
+        "draft": {
+            "headline": "h",
+            "narrative": "n",
+            "items": [
+                {"product_id": corpus[0].product_id, "reason": "a"},
+                {"product_id": corpus[1].product_id, "reason": "b"},
+                {"product_id": corpus[2].product_id, "reason": "c"},
+            ],
+        },
+        "node_path": ["build_profile", "generate", "validate_grounding"],
+        "retrieval_score": 0.8,
+        "refine_loops": 0,
+        "fallback_used": False,
+    }
+    draft, _node_path, _score, _loops, fallback_used = _resolve_result(final, ctx)
+    assert fallback_used is False
+    assert [i["product_id"] for i in draft["items"]] == [
+        corpus[0].product_id, corpus[1].product_id, corpus[2].product_id
+    ]
+
+
+def test_enrich_items_persist_filter_drops_inactive_ids() -> None:
+    """Persist-time safety net: ``enrich_items(active_ids=...)`` drops any id not in the active set so a
+    future upstream bug can never persist a bare/inactive id. Without ``active_ids`` it is a no-op."""
+    corpus = _corpus()
+    corpus_by_id = {doc.product_id: doc for doc in corpus}
+    active_ids = {doc.product_id for doc in corpus}
+    items = [
+        {"product_id": corpus[0].product_id, "reason": "a"},
+        {"product_id": "inactive-or-deleted-id", "reason": "b"},  # not active in the snapshot
+        {"product_id": corpus[1].product_id, "reason": "c"},
+        {"product_id": corpus[2].product_id, "reason": "d"},
+    ]
+    enriched = enrich_items(items, corpus_by_id, active_ids)
+    persisted_ids = {e["product_id"] for e in enriched}
+    assert "inactive-or-deleted-id" not in persisted_ids
+    assert persisted_ids <= active_ids            # every persisted id is active
+    assert len(enriched) == 3
+    # Behavior for existing callers is unchanged when active_ids is omitted (no filtering).
+    assert len(enrich_items(items, corpus_by_id)) == 4
 
 
 # --------------------------------------------------------------------------------------------------

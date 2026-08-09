@@ -354,3 +354,48 @@ async def test_concurrent_triggers_serialize_on_the_lock(factory, redis_client) 
         assert len(locked) == 1
     finally:
         await _cleanup(factory, redis_client, uid)
+
+
+async def test_post_lock_cooldown_recheck_blocks_redundant_run(
+    factory, redis_client, monkeypatch
+) -> None:
+    """Invariant #6 TOCTOU guard: a trigger whose PRE-lock snapshot showed the cooldown elapsed (so it
+    acquires the lock) must RE-CHECK the cooldown under the lock and early-exit if a concurrent run
+    completed in the meantime — without spending a redundant full generation.
+
+    We simulate that concurrent completion by having the fresh under-lock read return a just-now
+    ``last_generated_at`` while the seeded (pre-lock) snapshot is old. spy.calls must stay 0.
+    """
+    uid = await _seed_user(factory)
+    try:
+        now = datetime.now(timezone.utc)
+        # Pre-lock snapshot: last generation is OLD → the cheap pre-lock cooldown check passes and the
+        # lock is acquired.
+        await _seed_profile(
+            factory, uid, events_since_gen=10, profile_hash="HASH_Q",
+            interest_vector=[1.0, 0.0, 0.0],
+            last_generated_at=now - timedelta(minutes=20),
+        )
+        # No generation stash → L1/L2 both miss, so only the full-run path remains to be blocked.
+
+        # Simulate a concurrent run finishing in the TOCTOU window: the fresh under-lock read now sees a
+        # generation that completed one second ago (well inside the 10-min cooldown).
+        async def _fresh_read(session_factory, u):
+            return now - timedelta(seconds=1)
+
+        monkeypatch.setattr(trigger, "_read_last_generated_at", _fresh_read)
+
+        spy = _RunAgentSpy()
+        outcome = await trigger.maybe_regenerate(
+            uid, session_factory=factory, redis=redis_client, run_agent_fn=spy, now=now,
+        )
+
+        assert outcome.triggered is False
+        assert outcome.reason == "cooldown_after_lock"  # blocked by the post-lock re-check
+        assert spy.calls == 0  # the redundant full generation was prevented under the lock
+        # The lock was acquired and then released on the early return (so a later trigger can proceed).
+        assert await cache.acquire_lock(
+            redis_client, uid, ttl_seconds=cache.LOCK_TTL_SECONDS
+        ) is not None
+    finally:
+        await _cleanup(factory, redis_client, uid)
