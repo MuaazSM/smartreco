@@ -1,0 +1,104 @@
+{
+  "description": "10 synthetic behavior profiles for the SmartReco recommendation eval harness (PRD §10). Each profile is catalog-agnostic: it names target categories, preferred levels, and search terms, and the harness (evals/eval_recommendations.py) maps those onto real, active catalog rows at run time, seeds the corresponding behavioral events, rebuilds the decayed profile, and runs the real seven-node LangGraph agent. Profiles deliberately span two related categories each (with varied levels and distinct search vocabulary) so the recommendations differ across personas and so the diversity metric (>= 2 unique categories) is measurable without gaming.",
+  "schema": {
+    "id": "stable persona id; also the local-part of the synthetic user's email (eval-<id>@smartreco.eval)",
+    "name": "human-readable persona label",
+    "summary": "one-line description of the learner's intent (fed to the persuasion judge as context)",
+    "target_categories": "categories the learner engages with; the harness picks real products from these and expects recommendations to overlap them (behavioral relevance)",
+    "preferred_levels": "course levels the learner gravitates to; product selection prefers these levels first",
+    "search_terms": "search-event queries this learner issues (high-signal profile input)",
+    "engage_per_category": "how many products per target category to engage (view+click+dwell+cart); the harness caps this so at least one in-category product is always left un-engaged and therefore recommendable"
+  },
+  "profiles": [
+    {
+      "id": "p01",
+      "name": "Data & ML Foundations",
+      "summary": "A newcomer building core data-analysis and machine-learning fundamentals in Python.",
+      "target_categories": ["Data Science", "Machine Learning"],
+      "preferred_levels": ["beginner", "intermediate"],
+      "search_terms": ["python data analysis", "machine learning basics", "pandas dataframe", "scikit-learn"],
+      "engage_per_category": 3
+    },
+    {
+      "id": "p02",
+      "name": "Applied AI Engineer",
+      "summary": "An engineer shipping LLM features who keeps returning to retrieval and agent orchestration.",
+      "target_categories": ["AI & LLMs", "Machine Learning"],
+      "preferred_levels": ["advanced", "intermediate"],
+      "search_terms": ["rag pipeline production", "langgraph agents", "fine-tuning llm", "vector database"],
+      "engage_per_category": 3
+    },
+    {
+      "id": "p03",
+      "name": "Frontend Developer",
+      "summary": "A frontend developer leveling up on modern React, TypeScript and code craft.",
+      "target_categories": ["Web Development", "Programming"],
+      "preferred_levels": ["intermediate", "beginner"],
+      "search_terms": ["react hooks", "typescript generics", "clean code refactoring", "javascript es6"],
+      "engage_per_category": 3
+    },
+    {
+      "id": "p04",
+      "name": "Cloud & DevOps Practitioner",
+      "summary": "A platform engineer automating infrastructure and delivery pipelines.",
+      "target_categories": ["Cloud & DevOps", "Programming"],
+      "preferred_levels": ["intermediate", "advanced"],
+      "search_terms": ["kubernetes for developers", "terraform infrastructure as code", "ci cd github actions", "go concurrency"],
+      "engage_per_category": 3
+    },
+    {
+      "id": "p05",
+      "name": "Security & Reliability",
+      "summary": "A security-minded engineer covering application security and operational reliability.",
+      "target_categories": ["Cybersecurity", "Cloud & DevOps"],
+      "preferred_levels": ["intermediate", "advanced"],
+      "search_terms": ["web application security owasp", "ethical hacking", "site reliability engineering", "docker containers"],
+      "engage_per_category": 2
+    },
+    {
+      "id": "p06",
+      "name": "Analytics & Visualization",
+      "summary": "An analyst focused on SQL, statistics and communicating insight through visuals.",
+      "target_categories": ["Data Science", "Web Development"],
+      "preferred_levels": ["beginner", "intermediate"],
+      "search_terms": ["sql for data analysts", "data visualization matplotlib", "statistics foundations", "dashboards"],
+      "engage_per_category": 3
+    },
+    {
+      "id": "p07",
+      "name": "Deep Learning Researcher",
+      "summary": "A researcher going deep on neural architectures across vision and language.",
+      "target_categories": ["Machine Learning", "AI & LLMs"],
+      "preferred_levels": ["advanced"],
+      "search_terms": ["deep learning pytorch", "computer vision cnn", "natural language processing", "reinforcement learning"],
+      "engage_per_category": 3
+    },
+    {
+      "id": "p08",
+      "name": "Full-Stack Builder",
+      "summary": "A full-stack developer wiring up APIs, frontends and containerized deploys.",
+      "target_categories": ["Web Development", "Cloud & DevOps"],
+      "preferred_levels": ["intermediate"],
+      "search_terms": ["fastapi rest api", "next.js app router", "docker containers", "node express backend"],
+      "engage_per_category": 3
+    },
+    {
+      "id": "p09",
+      "name": "Systems Programmer",
+      "summary": "A systems programmer working in Rust and Go with an eye on infrastructure.",
+      "target_categories": ["Programming", "Cloud & DevOps"],
+      "preferred_levels": ["advanced"],
+      "search_terms": ["rust systems programming", "go concurrency patterns", "kubernetes", "data structures algorithms"],
+      "engage_per_category": 2
+    },
+    {
+      "id": "p10",
+      "name": "LLM Product Builder",
+      "summary": "A product-minded builder combining prompting, retrieval and data skills.",
+      "target_categories": ["AI & LLMs", "Data Science"],
+      "preferred_levels": ["intermediate", "beginner"],
+      "search_terms": ["prompt engineering", "building rag applications", "vector databases deep dive", "sql for data analysts"],
+      "engage_per_category": 3
+    }
+  ]
+}
