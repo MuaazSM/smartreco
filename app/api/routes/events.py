@@ -31,7 +31,7 @@ from app.api.deps import get_current_user
 from app.core.logging import get_logger, set_run_id
 from app.db.models import User
 from app.db.session import AsyncSessionLocal
-from app.services import event_ingest, profile
+from app.services import event_ingest, profile, trigger
 from app.services.event_ingest import ALLOWED_EVENT_TYPES, IncomingEvent
 from app.vector.qdrant_client import QdrantVectorStore
 
@@ -92,15 +92,18 @@ def _to_incoming(event: EventIn) -> IncomingEvent:
 
 
 async def _persist_and_profile(user_id: uuid.UUID, incoming: list[IncomingEvent]) -> None:
-    """Background step: bulk-insert the batch, then recompute the profile. Never raises to the caller.
+    """Background step: bulk-insert the batch, recompute the profile, then run the cost gate.
 
-    Owns its own DB session and Qdrant store. LLM-free by construction — ingest does one SQL insert
-    and the profile centroid averages pre-computed Qdrant vectors. A trigger check (Phase 7) will be
-    invoked from here, after the batch is persisted.
+    Owns its own DB session and Qdrant store. The ingest + profile steps are LLM-free by construction
+    (one SQL insert; the centroid averages pre-computed Qdrant vectors). The Phase-7 trigger gate runs
+    **after** persistence, still off the hot request path (invariant #6): the request handler already
+    returned 202. Regeneration only happens if the compound gate fires and the Redis lock is acquired;
+    even then, L1/L2 usually serve without a full LLM run.
     """
     set_run_id()
     store = QdrantVectorStore()
     try:
+        inserted = 0
         async with AsyncSessionLocal() as session:
             inserted = await event_ingest.ingest_events(
                 session, user_id=user_id, events=incoming
@@ -112,6 +115,12 @@ async def _persist_and_profile(user_id: uuid.UUID, incoming: list[IncomingEvent]
                     new_event_count=inserted,
                     vector_store=store,
                 )
+        if inserted:
+            await trigger.maybe_regenerate(
+                user_id,
+                high_intent=trigger.batch_has_high_intent(incoming),
+                vector_store=store,
+            )
     except Exception as exc:  # noqa: BLE001 - background work must never crash the worker loop
         logger.error(
             "events.background_failed",
