@@ -4,5 +4,5 @@
  * PRD §6.6).
  */
 export function SkeletonBlock({ className = "" }: { className?: string }): React.ReactElement {
-  return <div className={`animate-pulse rounded-md bg-neutral-200 dark:bg-neutral-800 ${className}`} />;
+  return <div className={`animate-pulse rounded-md bg-hairline ${className}`} />;
 }

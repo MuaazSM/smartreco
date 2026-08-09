@@ -12,11 +12,11 @@ export function ProductActions({ productId }: { productId: string }): React.Reac
   const [added, setAdded] = useState(false);
 
   return (
-    <div className="mt-6 flex gap-2">
+    <div className="mt-6 flex gap-2.5">
       <button
         type="button"
         onClick={() => tracker.trackClick(productId, { source: "product_detail" })}
-        className="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium dark:border-neutral-700"
+        className="btn btn-o"
       >
         I&apos;m interested
       </button>
@@ -26,7 +26,7 @@ export function ProductActions({ productId }: { productId: string }): React.Reac
           tracker.trackCart(productId);
           setAdded(true);
         }}
-        className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-neutral-900"
+        className="btn"
       >
         {added ? "Added ✓" : "Add to cart"}
       </button>

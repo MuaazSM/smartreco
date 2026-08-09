@@ -56,9 +56,10 @@ export default async function CatalogPage({
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-12">
-      <h1 className="text-2xl font-bold">Course catalog</h1>
-      <p className="mt-2 text-neutral-600 dark:text-neutral-400">
+    <main className="mx-auto max-w-page px-7 py-12">
+      <p className="eyebrow">Catalog</p>
+      <h1 className="mt-2 text-3xl">Course catalog</h1>
+      <p className="mt-2 text-muted">
         Search is semantic with keyword fallback — every search you run is tracked and feeds your
         recommendation.
       </p>

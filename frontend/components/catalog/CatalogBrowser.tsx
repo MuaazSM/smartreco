@@ -112,12 +112,12 @@ export function CatalogBrowser({
           value={query.q}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Search courses (e.g. deep learning, react hooks)"
-          className="min-w-[16rem] flex-1 rounded-md border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-700"
+          className="field min-w-[16rem] flex-1"
         />
         <select
           value={query.category}
           onChange={(e) => updateQuery({ category: e.target.value })}
-          className="rounded-md border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-700"
+          className="field"
         >
           <option value="">All categories</option>
           {CATEGORIES.map((c) => (
@@ -129,7 +129,7 @@ export function CatalogBrowser({
         <select
           value={query.level}
           onChange={(e) => updateQuery({ level: e.target.value })}
-          className="rounded-md border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-700"
+          className="field"
         >
           <option value="">All levels</option>
           {LEVELS.map((l) => (
@@ -140,7 +140,7 @@ export function CatalogBrowser({
         </select>
       </div>
 
-      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-3 text-sm text-neg">{error}</p>}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-busy={loading}>
         {loading
@@ -149,29 +149,28 @@ export function CatalogBrowser({
       </div>
 
       {!loading && data.items.length === 0 && (
-        <p className="mt-6 text-center text-neutral-600 dark:text-neutral-400">
-          No courses match your filters.
-        </p>
+        <p className="mt-8 text-center text-muted">No courses match your filters.</p>
       )}
 
       {data.total > data.page_size && (
-        <div className="mt-8 flex items-center justify-center gap-3 text-sm">
+        <div className="mt-8 flex items-center justify-center gap-4 text-sm">
           <button
             type="button"
             disabled={query.page <= 1}
             onClick={() => updateQuery({ page: query.page - 1 })}
-            className="rounded-md border border-neutral-300 px-3 py-1.5 disabled:opacity-40 dark:border-neutral-700"
+            className="rounded-md border border-hairline-strong px-3 py-1.5 text-muted transition-colors hover:border-ink hover:text-ink disabled:opacity-40 disabled:hover:border-hairline-strong disabled:hover:text-muted"
           >
             Previous
           </button>
-          <span>
-            Page {query.page} of {totalPages}
+          <span className="text-muted">
+            Page <span className="mono text-ink">{query.page}</span> of{" "}
+            <span className="mono text-ink">{totalPages}</span>
           </span>
           <button
             type="button"
             disabled={query.page >= totalPages}
             onClick={() => updateQuery({ page: query.page + 1 })}
-            className="rounded-md border border-neutral-300 px-3 py-1.5 disabled:opacity-40 dark:border-neutral-700"
+            className="rounded-md border border-hairline-strong px-3 py-1.5 text-muted transition-colors hover:border-ink hover:text-ink disabled:opacity-40 disabled:hover:border-hairline-strong disabled:hover:text-muted"
           >
             Next
           </button>

@@ -37,7 +37,7 @@ export function LoginForm(): React.ReactElement {
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-6 space-y-4">
+    <form onSubmit={onSubmit} className="card mt-8 space-y-4 p-6">
       <div>
         <label htmlFor="email" className="block text-sm font-medium">
           Email
@@ -49,7 +49,7 @@ export function LoginForm(): React.ReactElement {
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="mt-1 w-full rounded-md border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-700"
+          className="field mt-1.5 w-full"
         />
       </div>
       <div>
@@ -63,18 +63,14 @@ export function LoginForm(): React.ReactElement {
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 w-full rounded-md border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-700"
+          className="field mt-1.5 w-full"
         />
       </div>
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-      <button
-        type="submit"
-        disabled={submitting}
-        className="w-full rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
-      >
+      {error && <p className="text-sm text-neg">{error}</p>}
+      <button type="submit" disabled={submitting} className="btn w-full">
         {submitting ? "Logging in…" : "Log in"}
       </button>
-      <p className="text-center text-sm text-neutral-500">
+      <p className="text-center text-sm text-muted">
         No account?{" "}
         <a href="/register" className="text-accent underline-offset-2 hover:underline">
           Sign up

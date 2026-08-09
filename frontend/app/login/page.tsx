@@ -8,10 +8,11 @@ export const metadata: Metadata = {
 
 export default function LoginPage(): React.ReactElement {
   return (
-    <main className="mx-auto max-w-sm px-6 py-16">
-      <h1 className="text-2xl font-bold">Log in</h1>
-      <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
-        See the recommendation block built from your activity.
+    <main className="mx-auto max-w-sm px-6 py-20">
+      <p className="eyebrow">Welcome back</p>
+      <h1 className="mt-2 text-3xl">Log in</h1>
+      <p className="mt-2 text-muted">
+        See the recommendation built from your activity — cited to real courses.
       </p>
       <LoginForm />
     </main>

@@ -30,10 +30,10 @@ export default async function ProductDetailPage({
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) notFound();
     return (
-      <main className="mx-auto max-w-3xl px-6 py-12">
-        <p className="text-neutral-600 dark:text-neutral-400">
+      <main className="mx-auto max-w-3xl px-7 py-12">
+        <p className="text-muted">
           Could not load this course right now.{" "}
-          <a href="/catalog" className="underline underline-offset-2">
+          <a href="/catalog" className="text-accent underline-offset-2 hover:underline">
             Back to catalog
           </a>
         </p>
@@ -42,32 +42,32 @@ export default async function ProductDetailPage({
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
+    <main className="mx-auto max-w-3xl px-7 py-12">
       <ProductDetailTracker productId={product.id}>
-        <a href="/catalog" className="text-sm underline underline-offset-2">
-          ← Back to catalog
+        <a
+          href="/catalog"
+          className="mono text-sm text-muted transition-colors hover:text-ink"
+        >
+          ← back to catalog
         </a>
-        <div className="mt-4 flex items-start justify-between gap-4">
+        <div className="mt-5 flex items-start justify-between gap-5">
           <div>
-            <p className="font-mono text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+            <p className="eyebrow">
               {product.category} · {product.level}
             </p>
-            <h1 className="mt-1 text-3xl font-bold">{product.title}</h1>
+            <h1 className="mt-2 text-[clamp(2rem,4vw,2.75rem)] leading-[1.05]">{product.title}</h1>
           </div>
-          <span className="whitespace-nowrap font-mono text-xl font-semibold">
+          <span className="mono shrink-0 whitespace-nowrap text-xl font-semibold">
             {formatPrice(product.price_cents)}
           </span>
         </div>
 
-        <p className="mt-4 text-neutral-600 dark:text-neutral-400">{product.description}</p>
+        <p className="mt-5 text-muted">{product.description}</p>
 
         {product.tags.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-1.5">
+          <div className="mt-5 flex flex-wrap gap-1.5">
             {product.tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs dark:bg-neutral-900"
-              >
+              <span key={tag} className="tag">
                 {tag}
               </span>
             ))}

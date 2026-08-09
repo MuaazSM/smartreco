@@ -8,9 +8,10 @@ export const metadata: Metadata = {
 
 export default function RegisterPage(): React.ReactElement {
   return (
-    <main className="mx-auto max-w-sm px-6 py-16">
-      <h1 className="text-2xl font-bold">Create your account</h1>
-      <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+    <main className="mx-auto max-w-sm px-6 py-20">
+      <p className="eyebrow">Get started</p>
+      <h1 className="mt-2 text-3xl">Create your account</h1>
+      <p className="mt-2 text-muted">
         Browse a bit, and SmartReco starts building a recommendation for you.
       </p>
       <RegisterForm />
