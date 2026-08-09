@@ -13,6 +13,9 @@ the agent never name a model. Under `MESH_DISABLED=true` this module performs **
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Any
+
+import httpx
 
 from app.core.config import settings
 from app.core.logging import get_logger
@@ -57,12 +60,39 @@ NODE_TIERS: dict[str, str] = {
 _live_free_models: frozenset[str] = frozenset()
 
 
+async def _fetch_model_catalog() -> list[dict[str, Any]]:
+    """Fetch Mesh's raw ``/models`` catalog as a list of dicts, tolerating both response shapes.
+
+    Mesh returns a **bare JSON list** (``[{"id": ..., "is_free": ...}, ...]``), not the OpenAI SDK's
+    expected paginated envelope (``{"object": "list", "data": [...]}``). The SDK's typed
+    ``client.models.list()`` assumes the latter and throws deep in its pagination code when handed the
+    former (``AttributeError: 'list' object has no attribute '_set_private_attributes'``). We go
+    around that by reusing the single Mesh client (CLAUDE.md #1) but asking for the raw
+    ``httpx.Response`` instead of a parsed SDK model, then parsing the JSON ourselves and accepting
+    either shape.
+    """
+    from app.llm.mesh import get_client  # lazy import: avoids a module-load cycle with mesh.py
+
+    client = get_client()
+    response = await client.get("/models", cast_to=httpx.Response)
+    payload = response.json()
+    if isinstance(payload, dict):
+        payload = payload.get("data", [])
+    if not isinstance(payload, list):
+        raise TypeError(f"unexpected Mesh /models payload shape: {type(payload).__name__}")
+    return [item for item in payload if isinstance(item, dict)]
+
+
 async def refresh_free_models() -> frozenset[str]:
     """Resolve Mesh's free-tier catalog once and cache it (call from the app lifespan at startup).
 
     Under ``MESH_DISABLED=true`` this makes **no** network call and returns the deterministic fixture
-    catalog (``FREE_PREFERENCE``). Otherwise it reads ``GET /v1/models`` via the single Mesh client
-    and keeps the ids whose ``is_free`` flag is set. The result primes ``free_model_ids()``.
+    catalog (``FREE_PREFERENCE``). Otherwise it fetches Mesh's raw model catalog (see
+    ``_fetch_model_catalog`` — tolerates a bare list or a ``{"data": [...]}`` envelope) and keeps the
+    ids whose ``is_free`` flag is truthy. Any failure along the way — network error, non-2xx status
+    (e.g. 402 on a balance-less account), timeout, or an unexpected payload shape — is logged and
+    treated as "no free models known" rather than raised: startup must never crash because Mesh's
+    catalog endpoint is unavailable, and ``resolve()`` cleanly falls back to ``PAID_FALLBACK`` instead.
     """
     global _live_free_models
     if settings.mesh_disabled:
@@ -71,10 +101,19 @@ async def refresh_free_models() -> frozenset[str]:
         logger.info("mesh_free_models_fixture", extra={"count": len(_live_free_models)})
         return _live_free_models
 
-    from app.llm.mesh import get_client  # lazy import: avoids a module-load cycle with mesh.py
+    try:
+        models = await _fetch_model_catalog()
+        ids = {
+            model["id"]
+            for model in models
+            if model.get("is_free", False) and isinstance(model.get("id"), str)
+        }
+    except Exception:
+        logger.exception("mesh_free_models_fetch_failed")
+        _live_free_models = frozenset()
+        free_model_ids.cache_clear()
+        return _live_free_models
 
-    page = await get_client().models.list()
-    ids = {model.id for model in page.data if getattr(model, "is_free", False)}
     _live_free_models = frozenset(ids)
     free_model_ids.cache_clear()
     logger.info("mesh_free_models_resolved", extra={"count": len(ids)})
