@@ -122,9 +122,12 @@ async def _persist_and_profile(user_id: uuid.UUID, incoming: list[IncomingEvent]
                 vector_store=store,
             )
     except Exception as exc:  # noqa: BLE001 - background work must never crash the worker loop
+        # Flat `extra=` (the JSONFormatter merges top-level keys but drops a nested `extra_fields`),
+        # plus `exc_info` so the traceback is actually captured instead of a bare message.
         logger.error(
             "events.background_failed",
-            extra={"extra_fields": {"user_id": str(user_id), "detail": f"{type(exc).__name__}: {exc}"}},
+            exc_info=True,
+            extra={"user_id": str(user_id), "detail": f"{type(exc).__name__}: {exc}"},
         )
     finally:
         await store.close()
