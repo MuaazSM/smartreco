@@ -26,6 +26,7 @@ from qdrant_client import AsyncQdrantClient
 from app.api.routes.admin import router as admin_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.events import router as events_router
+from app.api.routes.internal import router as internal_router
 from app.api.routes.products import router as products_router
 from app.api.routes.recommendations import router as recommendations_router
 from app.core.config import settings
@@ -33,6 +34,7 @@ from app.core.logging import configure_logging, get_logger, set_run_id
 from app.db.qdrant_bootstrap import bootstrap_qdrant
 from app.db.session import dispose_engine, engine
 from app.llm import model_router
+from app.scheduler import jobs as scheduler_jobs
 from app.services import cache, outbox_worker
 from app.vector.qdrant_client import QdrantVectorStore
 
@@ -63,9 +65,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     infra hiccup would be worse than starting degraded (same philosophy as the `_check_*` health
     helpers below, which never raise).
 
-    Phase 4 starts the APScheduler outbox-drain loop here too (must be in-process and continuous);
-    later phases add the digest/drift jobs. See PRD §13.3 — this is the scheduler that must never
-    depend on an idle-sleeping host.
+    Phase 4 starts the APScheduler outbox-drain loop here too (must be in-process and continuous).
+    Phase 9a (`app/scheduler/jobs.py`) adds the 09:00 digest + 03:00 drift-audit cron jobs onto this
+    SAME scheduler instance. See PRD §13.3 — the drain must never depend on an idle-sleeping host,
+    which is exactly why the *digest*, unlike the drain, also ships a second, deployment-safe path:
+    a GitHub Actions scheduled workflow hitting the token-protected `POST /api/internal/run-digest`
+    (`app/api/routes/internal.py`) — see that module and `app/scheduler/jobs.py` for the full story.
     """
     set_run_id()
     logger.info(
@@ -113,6 +118,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             coalesce=True,
             replace_existing=True,
         )
+        # Phase 9a (PRD §6.7): the 09:00 digest + 03:00 drift-audit cron jobs, added to this SAME
+        # scheduler rather than a second AsyncIOScheduler. Gated by the same env flag as the drain
+        # above so the test suite never has a background cron firing mid-run. See
+        # app/scheduler/jobs.py for the Postgres-jobstore attempt + in-memory fallback, and PRD
+        # §13.3 for why the *deployed* digest does not depend on this cron surviving a restart.
+        scheduler_jobs.register_daily_jobs(scheduler)
         scheduler.start()
         logger.info(
             "outbox.scheduler_started",
@@ -147,6 +158,7 @@ app.include_router(products_router)
 app.include_router(admin_router)
 app.include_router(events_router)
 app.include_router(recommendations_router)
+app.include_router(internal_router)
 
 
 def _asyncpg_dsn(database_url: str) -> str:
