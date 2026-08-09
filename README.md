@@ -89,9 +89,10 @@ Seeded logins (from `scripts/seed_data.py`): `admin@smartreco.dev` (admin) and `
 - ⭐ **Structured agent framework** — 7-node LangGraph, conditional edges, bounded refine loop → [`app/agent/graph.py`](app/agent/graph.py)
 - ⭐ **Retrieval polish** — dense + BM25 → Reciprocal Rank Fusion → metadata filter → MMR (λ=0.7) → top-12 → [`app/vector/hybrid_retriever.py`](app/vector/hybrid_retriever.py); pairwise reranker scaffold at [`app/vector/reranker.py`](app/vector/reranker.py) (pass-through by default)
 - ⭐ **Observability** — `GET /api/admin/agent-runs` (node path, retrieval score, refine loops, tokens, cost, latency) + `GET /api/admin/metrics` → [`app/api/routes/admin.py`](app/api/routes/admin.py), [`app/services/metrics.py`](app/services/metrics.py); LangSmith is env-ready (set `LANGSMITH_*`)
+- ⭐ **Scheduled proactive delivery (F7)** — APScheduler 09:00 digest + 03:00 drift audit on the same scheduler as the 5s drain, Jinja2 recap-with-hook email (graceful save-to-disk without SMTP), token-protected `POST /api/internal/run-digest`, and a GitHub Actions cron for the sleeping-host trap → [`app/scheduler/jobs.py`](app/scheduler/jobs.py), [`app/scheduler/digest.py`](app/scheduler/digest.py), [`app/api/routes/internal.py`](app/api/routes/internal.py), [`.github/workflows/digest.yml`](.github/workflows/digest.yml); demo it with `python scripts/send_digest_now.py`
 - **Evaluation harness** — 10 synthetic profiles scored on groundedness / behavioral relevance / persuasion / diversity → [`evals/eval_recommendations.py`](evals/eval_recommendations.py), results in [`evals/results.md`](evals/results.md)
 
-**Not implemented in this build (future work):** the 09:00 scheduled email digest (F7) and the `scripts/simulate_behavior.py` replay helper are designed (see the Deployment and Demo sections) but were cut for time; the continuous 5s outbox drain scheduler *is* in place.
+**Being finalized:** a functional (non-pass-through) reranker and the `scripts/simulate_behavior.py` persona-replay demo helper. The 5s outbox drain and the daily digest/drift schedulers are in place.
 
 ---
 
