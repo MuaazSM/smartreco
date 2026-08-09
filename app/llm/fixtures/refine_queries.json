@@ -1,0 +1,13 @@
+{
+  "queries": [
+    "advanced retrieval augmented generation evaluation and observability",
+    "production llm agent monitoring and testing",
+    "vector search reranking best practices"
+  ],
+  "filters": {
+    "category": null,
+    "level": "advanced",
+    "max_price_cents": null
+  },
+  "rationale": "Grader flagged an evaluation/observability gap; widen slightly toward eval and monitoring while staying advanced."
+}
