@@ -24,53 +24,48 @@ export function TransparencyStrip({ transparency }: { transparency: Transparency
   const maxWeight = categories.length > 0 ? categories[0][1] : 1;
 
   return (
-    <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900">
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          Based on{" "}
-          <span className="font-mono font-medium text-neutral-900 dark:text-neutral-100">
-            {transparency.total_events}
-          </span>{" "}
-          actions ·{" "}
-          <span className="font-mono font-medium text-neutral-900 dark:text-neutral-100">
-            {transparency.searches}
-          </span>{" "}
-          searches · updated {formatRelativeTime(transparency.last_generated_at)}
+    <div className="card">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <p className="text-sm text-muted">
+          Based on <span className="mono text-ink">{transparency.total_events}</span> actions ·{" "}
+          <span className="mono text-ink">{transparency.searches}</span> searches · updated{" "}
+          {formatRelativeTime(transparency.last_generated_at)}
         </p>
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
-          className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm font-medium transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+          className="rounded-md border border-hairline-strong px-3 py-1.5 text-[0.82rem] text-muted transition-colors hover:border-ink hover:text-ink"
         >
           {expanded ? "Hide what we noticed" : "What we noticed about you"}
         </button>
       </div>
 
       {expanded && (
-        <div className="border-t border-neutral-200 px-4 py-3 dark:border-neutral-800">
+        <div className="border-t border-hairline px-4 py-4">
           {categories.length === 0 ? (
-            <p className="text-sm text-neutral-500">
+            <p className="text-sm text-muted">
               Not enough signal yet — browse a few courses and this fills in.
             </p>
           ) : (
-            <ul className="space-y-1.5">
-              {categories.map(([category, weight]) => (
-                <li key={category} className="flex items-center gap-2 text-sm">
-                  <span
-                    title={category}
-                    className="w-32 shrink-0 truncate text-neutral-700 dark:text-neutral-300"
-                  >
-                    {category}
-                  </span>
-                  <span className="h-2 flex-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
-                    <span
-                      className="block h-full rounded-full bg-accent"
-                      style={{ width: `${Math.max(6, Math.round((weight / maxWeight) * 100))}%` }}
-                    />
-                  </span>
-                </li>
-              ))}
+            <ul className="space-y-2.5">
+              {categories.map(([category, weight]) => {
+                const pct = Math.round((weight / maxWeight) * 100);
+                return (
+                  <li key={category} className="flex items-center gap-3 text-sm">
+                    <span title={category} className="w-32 shrink-0 truncate text-muted">
+                      {category}
+                    </span>
+                    <span className="h-2 flex-1 overflow-hidden rounded-full bg-hairline">
+                      <span
+                        className="block h-full rounded-full bg-accent"
+                        style={{ width: `${Math.max(6, pct)}%` }}
+                      />
+                    </span>
+                    <span className="mono w-9 shrink-0 text-right text-xs text-faint">{pct}</span>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

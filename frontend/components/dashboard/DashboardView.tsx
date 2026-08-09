@@ -20,7 +20,7 @@ import type { CurrentRecommendationOut, RefreshOut } from "../../lib/types";
 import { useVisiblePolling } from "../../lib/useVisiblePolling";
 import { useAuth } from "../AuthProvider";
 import { SkeletonBlock } from "../Skeleton";
-import { RecommendationCard } from "./RecommendationCard";
+import { AnnotatedRecommendation } from "./AnnotatedRecommendation";
 import { TransparencyStrip } from "./TransparencyStrip";
 
 const POLL_INTERVAL_MS = 8_000;
@@ -30,14 +30,14 @@ type LoadState = "loading" | "ready" | "empty" | "error";
 
 function DashboardSkeleton(): React.ReactElement {
   return (
-    <div aria-busy="true" aria-label="Loading your recommendation">
-      <SkeletonBlock className="h-8 w-2/3" />
+    <div className="card mt-6 p-6" aria-busy="true" aria-label="Loading your recommendation">
+      <SkeletonBlock className="h-4 w-40" />
+      <SkeletonBlock className="mt-4 h-8 w-2/3" />
       <SkeletonBlock className="mt-3 h-4 w-full" />
       <SkeletonBlock className="mt-2 h-4 w-5/6" />
-      <SkeletonBlock className="mt-6 h-12 w-full" />
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-6 space-y-3">
         {[0, 1, 2].map((i) => (
-          <SkeletonBlock key={i} className="h-48 w-full" />
+          <SkeletonBlock key={i} className="h-12 w-full" />
         ))}
       </div>
     </div>
@@ -121,41 +121,51 @@ export function DashboardView(): React.ReactElement {
   // While auth resolves, or while redirecting an unauthenticated visitor to /login, show the skeleton.
   if (authLoading || !user) {
     return (
-      <main className="mx-auto max-w-4xl px-6 py-12">
+      <main className="mx-auto max-w-3xl px-6 py-12">
         <DashboardSkeleton />
       </main>
     );
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12">
-      <div className="flex items-start justify-between gap-4">
-        <h1 className="text-2xl font-bold">Your recommendations</h1>
+    <main className="mx-auto max-w-3xl px-6 py-12">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <p className="eyebrow">Your dashboard</p>
+          <h1 className="mt-2 text-3xl">Recommendations, with receipts</h1>
+        </div>
         <button
           type="button"
           onClick={handleRefresh}
           disabled={refreshing || state === "loading"}
-          className="whitespace-nowrap rounded-md border border-neutral-300 px-3 py-1.5 text-sm font-medium disabled:opacity-50 dark:border-neutral-700"
+          className="btn btn-o"
         >
           {refreshing ? "Refreshing…" : "Refresh now"}
         </button>
       </div>
-      {refreshMessage && <p className="mt-2 text-sm text-amber-600">{refreshMessage}</p>}
+      {refreshMessage && <p className="mt-3 text-sm text-neg">{refreshMessage}</p>}
 
       {justUpdated && rec && (
         <p
           role="status"
-          className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+          className="mono mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[0.78rem] text-ok"
+          style={{ borderColor: "color-mix(in srgb, var(--ok) 35%, transparent)" }}
         >
-          Updated just now · based on your last{" "}
-          <span className="font-mono">{rec.transparency.total_events}</span> actions
+          <span className="h-1.5 w-1.5 rounded-full bg-ok" aria-hidden />
+          Updated just now · based on your last {rec.transparency.total_events} actions
         </p>
       )}
 
       {state === "loading" && <DashboardSkeleton />}
 
       {state === "error" && (
-        <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+        <div
+          className="mt-6 rounded-xl border p-4 text-sm text-neg"
+          style={{
+            borderColor: "color-mix(in srgb, var(--neg) 30%, transparent)",
+            background: "color-mix(in srgb, var(--neg) 8%, transparent)",
+          }}
+        >
           Could not load your recommendation right now.{" "}
           <button type="button" onClick={() => void load()} className="underline underline-offset-2">
             Try again
@@ -164,37 +174,26 @@ export function DashboardView(): React.ReactElement {
       )}
 
       {state === "empty" && (
-        <div className="mt-6 rounded-lg border border-neutral-200 p-6 text-center dark:border-neutral-800">
-          <p className="text-neutral-600 dark:text-neutral-400">
+        <div className="card mt-6 p-8 text-center">
+          <p className="text-muted">
             No recommendation yet — browse the catalog for a bit, or generate one now.
           </p>
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="mt-4 rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
-          >
+          <button type="button" onClick={handleRefresh} disabled={refreshing} className="btn mt-5">
             {refreshing ? "Generating…" : "Generate my first recommendation"}
           </button>
-          <a href="/catalog" className="mt-3 block text-sm underline underline-offset-2">
-            Browse the catalog
-          </a>
+          <div className="mt-3">
+            <a href="/catalog" className="text-sm text-accent underline-offset-2 hover:underline">
+              Browse the catalog
+            </a>
+          </div>
         </div>
       )}
 
       {state === "ready" && rec && (
-        <>
-          <h2 className="mt-6 text-2xl font-semibold sm:text-3xl">{rec.headline}</h2>
-          <p className="mt-2 text-neutral-600 dark:text-neutral-400">{rec.narrative}</p>
-
+        <div className="mt-6 space-y-6">
+          <AnnotatedRecommendation rec={rec} userName={user.display_name} />
           <TransparencyStrip transparency={rec.transparency} />
-
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {rec.items.map((item) => (
-              <RecommendationCard key={item.product_id} item={item} recId={rec.recommendation_id} />
-            ))}
-          </div>
-        </>
+        </div>
       )}
     </main>
   );
