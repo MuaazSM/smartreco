@@ -1,0 +1,66 @@
+# Backend image build context (PRD §13.1). Dockerfile COPYs only app/, alembic.ini,
+# app/db/migrations/, scripts/, evals/ and docker-entrypoint.sh explicitly — everything below is
+# excluded so the build context stays small and nothing gets baked in by accident.
+
+# --- version control / editor ---
+.git
+.gitignore
+.github
+.vscode
+.idea
+.DS_Store
+
+# --- python ---
+.venv
+venv
+env
+__pycache__
+*.py[cod]
+*$py.class
+*.egg-info
+.eggs
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+.coverage.*
+htmlcov
+build
+dist
+
+# --- secrets — never baked into the image (CLAUDE.md invariant #4); real values are platform
+# environment variables set on Render, not files shipped in the image ---
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# --- frontend — separate Vercel deploy; the backend image doesn't need it ---
+frontend
+node_modules
+.next
+out
+.turbo
+
+# --- docs / spec — not needed at runtime ---
+docs
+*.pdf
+IMPLEMENTATION.md
+PROMPTBOOK.md
+
+# --- tests — needed for CI, not for the running container ---
+tests
+
+# --- local data / logs / scratch ---
+*.log
+logs
+*.db
+*.sqlite
+*.sqlite3
+qdrant_storage
+qdrant_data
+storage
+scratch
+tmp
+evals/results.json
