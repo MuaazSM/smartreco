@@ -49,43 +49,60 @@ export function RecommendationCard({
   }
 
   return (
-    <article className="flex flex-col rounded-xl border border-neutral-200 p-5 transition-shadow hover:border-neutral-300 hover:shadow-md dark:border-neutral-800 dark:hover:border-neutral-700">
+    <article className="group flex flex-col rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-lg dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700">
+      {/* Header: category eyebrow + price, then the title */}
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-lg font-semibold leading-snug">{item.title || item.product_id}</h3>
-          <p className="mt-0.5 font-mono text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-            {item.category || "course"} · {item.level || "any level"}
-          </p>
-        </div>
-        <span className="whitespace-nowrap font-mono text-sm font-medium text-neutral-700 dark:text-neutral-300">
+        <p className="font-mono text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+          {item.category || "course"}
+        </p>
+        <span className="shrink-0 whitespace-nowrap font-mono text-sm font-semibold text-neutral-900 dark:text-neutral-100">
           {formatPrice(item.price_cents)}
         </span>
       </div>
 
-      <p className="mt-3 flex-1 text-sm text-neutral-600 dark:text-neutral-400">
-        <span className="font-medium text-neutral-800 dark:text-neutral-200">Why this: </span>
-        {item.reason}
-      </p>
+      <h3 className="mt-2 line-clamp-2 text-lg font-semibold leading-snug">
+        {item.title || item.product_id}
+      </h3>
 
+      {item.level && (
+        <span className="mt-2 inline-flex w-fit items-center rounded-full bg-neutral-100 px-2.5 py-0.5 font-mono text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
+          {item.level}
+        </span>
+      )}
+
+      {/* The grounded reason — the point of the whole product, so give it real presence. */}
+      <div className="mt-4 flex-1 rounded-xl border-l-2 border-accent bg-accent-soft px-4 py-3">
+        <p className="font-mono text-xs font-semibold uppercase tracking-wider text-accent">
+          Why this
+        </p>
+        <p className="mt-1.5 text-sm leading-relaxed text-neutral-700 dark:text-neutral-200">
+          {item.reason}
+        </p>
+      </div>
+
+      {/* Footer: link out + feedback */}
       <div className="mt-4 flex items-center justify-between">
         <a
           href={`/catalog/${item.product_id}`}
-          className="text-sm font-medium text-accent underline-offset-2 hover:underline"
+          className="group/link inline-flex items-center gap-1 text-sm font-medium text-accent"
           onClick={() => tracker.trackClick(item.product_id, { source: "dashboard_card" })}
         >
           View course
+          <span aria-hidden className="transition-transform duration-150 group-hover/link:translate-x-0.5">
+            →
+          </span>
         </a>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5" role="group" aria-label="Feedback on this recommendation">
           <button
             type="button"
             aria-label="Recommend more like this"
             aria-pressed={signal === "up"}
             disabled={submitting}
             onClick={() => sendFeedback("up")}
-            className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
+            className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
               signal === "up"
-                ? "border-emerald-600 bg-emerald-50 text-emerald-700 dark:bg-emerald-950"
-                : "border-neutral-300 dark:border-neutral-700"
+                ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:border-emerald-500 dark:bg-emerald-950 dark:text-emerald-300"
+                : "border-neutral-200 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
             }`}
           >
             👍
@@ -96,10 +113,10 @@ export function RecommendationCard({
             aria-pressed={signal === "down"}
             disabled={submitting}
             onClick={() => sendFeedback("down")}
-            className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
+            className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
               signal === "down"
-                ? "border-red-600 bg-red-50 text-red-700 dark:bg-red-950"
-                : "border-neutral-300 dark:border-neutral-700"
+                ? "border-red-500 bg-red-50 text-red-700 dark:border-red-500 dark:bg-red-950 dark:text-red-300"
+                : "border-neutral-200 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
             }`}
           >
             👎
