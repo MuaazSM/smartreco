@@ -220,6 +220,29 @@ async def maybe_regenerate(
         return RegenerationOutcome(False, decision.reason, run_id=run_id)
 
     try:
+        # Defense-in-depth (invariant #6): the cooldown was evaluated on a profile snapshot read
+        # BEFORE the lock. Now that we hold the lock, re-read last_generated_at fresh from the DB and
+        # re-check the cooldown — if another run completed in the window between our pre-lock read and
+        # acquiring the lock, the cooldown may no longer hold. This closes a latent TOCTOU where a
+        # second trigger could do ONE redundant (never simultaneous) full generation. The pre-lock
+        # check stays as the cheap early exit; this only fires in that narrow post-lock window, and the
+        # finally below still releases the lock on this early return.
+        fresh_last_generated_at = await _read_last_generated_at(session_factory, uid)
+        if fresh_last_generated_at is not None:
+            elapsed = (now - _as_aware(fresh_last_generated_at)).total_seconds()
+            if elapsed < COOLDOWN_SECONDS:
+                logger.info(
+                    "trigger.skip",
+                    extra={
+                        "extra_fields": {
+                            "user_id": str(uid),
+                            "reason": "cooldown_after_lock",  # a concurrent run just completed
+                            "run_id": run_id,
+                        }
+                    },
+                )
+                return RegenerationOutcome(False, "cooldown_after_lock", run_id=run_id)
+
         gen_hash = await cache.load_generation_hash(redis, uid)
 
         # ---- L1: exact profile-hash match → serve the stored recommendation, no LLM ----
@@ -435,6 +458,14 @@ async def _read_profile(session_factory, uid: uuid.UUID):
             list(row.interest_vector or []),
             row.last_generated_at,
             dict(row.top_categories or {}),
+        )
+
+
+async def _read_last_generated_at(session_factory, uid: uuid.UUID) -> datetime | None:
+    """Fresh ``last_generated_at`` read for the post-lock cooldown re-check (invariant #6 TOCTOU guard)."""
+    async with session_factory() as session:
+        return await session.scalar(
+            select(UserProfile.last_generated_at).where(UserProfile.user_id == uid)
         )
 
 
