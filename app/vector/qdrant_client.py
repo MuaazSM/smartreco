@@ -15,7 +15,7 @@ makes an outbox replay idempotent: re-processing a product's row overwrites the 
 from __future__ import annotations
 
 import uuid
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Iterable, Protocol, runtime_checkable
 
 from qdrant_client import AsyncQdrantClient, models
 
@@ -46,6 +46,10 @@ class VectorStore(Protocol):
     async def delete(self, product_id: ProductId) -> None: ...
 
     async def retrieve(self, product_id: ProductId) -> models.Record | None: ...
+
+    async def retrieve_vectors(
+        self, product_ids: Iterable[ProductId]
+    ) -> dict[str, list[float]]: ...
 
     async def all_point_ids(self) -> set[str]: ...
 
@@ -111,6 +115,35 @@ class QdrantVectorStore:
             with_vectors=False,
         )
         return records[0] if records else None
+
+    async def retrieve_vectors(
+        self, product_ids: Iterable[ProductId]
+    ) -> dict[str, list[float]]:
+        """Fetch the stored vectors for several points at once — ``{point_id: vector}``.
+
+        Read-only and additive (Phase 5 profile centroid): the profile builder averages these
+        pre-computed product vectors instead of embedding anything, keeping the ingest/profile path
+        LLM-free (invariant #6/#7). Points that don't exist (or carry no vector) are simply absent
+        from the returned map. An empty input makes no network call.
+        """
+        ids = [_point_id(pid) for pid in product_ids]
+        if not ids:
+            return {}
+        records = await self._client.retrieve(
+            collection_name=self._collection,
+            ids=ids,
+            with_payload=False,
+            with_vectors=True,
+        )
+        result: dict[str, list[float]] = {}
+        for record in records:
+            vector = record.vector
+            # This collection uses a single unnamed vector; guard against a named-vector dict anyway.
+            if isinstance(vector, dict):
+                vector = next(iter(vector.values()), None)
+            if vector is not None:
+                result[str(record.id)] = list(vector)
+        return result
 
     async def all_point_ids(self) -> set[str]:
         """Every point id in the collection, as strings — the Qdrant side of the sync-status diff."""
