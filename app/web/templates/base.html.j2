@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}SmartReco{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body{% if product %} data-product-id="{{ product.id }}"{% endif %}>
+  <header class="nav">
+    <div class="wrap nav-in">
+      <a class="brand" href="/">Smart<b>Reco</b></a>
+      <nav class="nav-mid">
+        <a href="/catalog">catalog</a>
+        {% if user %}<a href="/dashboard">dashboard</a>{% endif %}
+      </nav>
+      <div class="nav-right">
+        {% if user %}
+          <span class="muted small">{{ user.display_name }}</span>
+          <button class="btn btn-o" id="logout" type="button">Log out</button>
+        {% else %}
+          <a class="link" href="/login">Log in</a>
+          <a class="btn" href="/register">Get started</a>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="foot">
+    <div class="wrap">SmartReco — server-rendered with Jinja2 · grounded recommendations, cited to a real catalog.</div>
+  </footer>
+
+  <script>window.SMARTRECO_AUTHED = {{ 'true' if user else 'false' }};</script>
+  <script src="/static/tracker.js" defer></script>
+  {% if user %}
+  <script>
+    (function () {
+      var lo = document.getElementById('logout');
+      if (lo) lo.addEventListener('click', function () {
+        fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+          .finally(function () { location.href = '/'; });
+      });
+    })();
+  </script>
+  {% endif %}
+  {% block scripts %}{% endblock %}
+</body>
+</html>

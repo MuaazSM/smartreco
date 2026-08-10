@@ -21,6 +21,7 @@ import redis.asyncio as aioredis
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from qdrant_client import AsyncQdrantClient
 
 from app.api.routes.admin import router as admin_router
@@ -37,6 +38,8 @@ from app.llm import model_router
 from app.scheduler import jobs as scheduler_jobs
 from app.services import cache, outbox_worker
 from app.vector.qdrant_client import QdrantVectorStore
+from app.web.router import WEB_STATIC_DIR
+from app.web.router import router as web_router
 
 configure_logging(settings.log_level)
 logger = get_logger(__name__)
@@ -159,6 +162,12 @@ app.include_router(admin_router)
 app.include_router(events_router)
 app.include_router(recommendations_router)
 app.include_router(internal_router)
+
+# Server-rendered Jinja2 frontend (the challenge's suggested stack) + its static assets. Root-level
+# HTML pages (/, /catalog, /product/{id}, /dashboard, /login, /register); the JSON API stays on
+# /api/* and /health. The Next.js app on Vercel remains the primary UI.
+app.mount("/static", StaticFiles(directory=str(WEB_STATIC_DIR)), name="static")
+app.include_router(web_router)
 
 
 def _asyncpg_dsn(database_url: str) -> str:

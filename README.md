@@ -53,7 +53,7 @@ flowchart TD
 - **Backend:** FastAPI (Python 3.11, async throughout), SQLAlchemy 2.0 + Alembic, APScheduler.
 - **Data:** PostgreSQL (source of truth), Qdrant (1536-dim cosine vectors), Redis (semantic cache + regeneration lock).
 - **AI:** LangGraph agent; **all** LLM + embedding calls through Mesh via [`app/llm/mesh.py`](app/llm/mesh.py).
-- **Frontend:** Next.js App Router (TypeScript strict, Tailwind); the tracker is a Web Worker.
+- **Frontend:** two surfaces on the same API — (1) a **server-rendered Jinja2** frontend served by FastAPI (the suggested stack: [`app/web/`](app/web/) — templates + a batched, non-blocking vanilla-JS tracker), reachable at the backend root (`/`, `/catalog`, `/product/{id}`, `/dashboard`); and (2) a polished **Next.js** App Router app (TypeScript strict, Tailwind; the tracker is a Web Worker) deployed to Vercel. Both drive the same `/api/*` endpoints.
 
 ---
 

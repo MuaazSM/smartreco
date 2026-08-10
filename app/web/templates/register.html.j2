@@ -1,0 +1,44 @@
+{% extends "base.html.j2" %}
+{% block title %}Sign up · SmartReco{% endblock %}
+{% block content %}
+<div class="auth">
+  <p class="kicker">Get started</p>
+  <h1 class="display">Create your account</h1>
+  <p class="lede">Browse a bit, and SmartReco starts building a recommendation for you.</p>
+  <form id="authForm" class="card form">
+    <label>Name<input type="text" name="display_name" required autocomplete="name"></label>
+    <label>Email<input type="email" name="email" required autocomplete="email"></label>
+    <label>Password<input type="password" name="password" required minlength="8" autocomplete="new-password">
+      <span class="muted small hint">At least 8 characters.</span></label>
+    <p class="error" id="err" role="alert"></p>
+    <button class="btn full" type="submit">Sign up</button>
+    <p class="muted center small">Already have an account? <a href="/login">Log in</a></p>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('authForm').addEventListener('submit', async function (e) {
+  e.preventDefault();
+  var f = e.target, err = document.getElementById('err'), btn = f.querySelector('button');
+  err.textContent = ''; btn.disabled = true; btn.textContent = 'Creating account…';
+  function fail(m) { err.textContent = m; btn.disabled = false; btn.textContent = 'Sign up'; }
+  try {
+    var reg = await fetch('/api/auth/register', {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: f.email.value, password: f.password.value, display_name: f.display_name.value })
+    });
+    if (!reg.ok) {
+      if (reg.status === 409) return fail('An account with that email already exists.');
+      var d = await reg.json().catch(function () { return {}; });
+      return fail(d.detail || 'Could not sign up.');
+    }
+    await fetch('/api/auth/login', {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: f.email.value, password: f.password.value })
+    });
+    location.href = '/dashboard';
+  } catch (_) { fail('Could not sign up right now.'); }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html.j2" %}
+{% block title %}Log in · SmartReco{% endblock %}
+{% block content %}
+<div class="auth">
+  <p class="kicker">Welcome back</p>
+  <h1 class="display">Log in</h1>
+  <p class="lede">See the recommendation built from your activity — cited to real courses.</p>
+  <form id="authForm" class="card form">
+    <label>Email<input type="email" name="email" required autocomplete="email"></label>
+    <label>Password<input type="password" name="password" required autocomplete="current-password"></label>
+    <p class="error" id="err" role="alert"></p>
+    <button class="btn full" type="submit">Log in</button>
+    <p class="muted center small">No account? <a href="/register">Sign up</a></p>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('authForm').addEventListener('submit', async function (e) {
+  e.preventDefault();
+  var f = e.target, err = document.getElementById('err'), btn = f.querySelector('button');
+  err.textContent = ''; btn.disabled = true; btn.textContent = 'Logging in…';
+  try {
+    var r = await fetch('/api/auth/login', {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: f.email.value, password: f.password.value })
+    });
+    if (!r.ok) { var d = await r.json().catch(function () { return {}; });
+      err.textContent = d.detail || 'Could not log in.'; btn.disabled = false; btn.textContent = 'Log in'; return; }
+    location.href = '/dashboard';
+  } catch (_) { err.textContent = 'Could not log in right now.'; btn.disabled = false; btn.textContent = 'Log in'; }
+});
+</script>
+{% endblock %}

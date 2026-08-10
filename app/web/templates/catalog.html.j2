@@ -1,0 +1,29 @@
+{% extends "base.html.j2" %}
+{% block title %}Catalog · SmartReco{% endblock %}
+{% block content %}
+<p class="eyebrow">Catalog</p>
+<h1 class="display">Course catalog</h1>
+<p class="lede">Every search and click here is tracked (batched, off the critical path) and feeds your recommendation.</p>
+
+<form class="filters" method="get" action="/catalog">
+  <input id="search" type="search" name="q" value="{{ q }}" placeholder="Search courses (e.g. deep learning, react hooks)">
+  <select name="category" onchange="this.form.submit()">
+    <option value="">All categories</option>
+    {% for c in categories %}<option value="{{ c }}"{% if c == category %} selected{% endif %}>{{ c }}</option>{% endfor %}
+  </select>
+  <button class="btn btn-o" type="submit">Search</button>
+</form>
+
+<div class="grid">
+  {% for p in products %}
+  <a class="card product" href="/product/{{ p.id }}" data-track-click="{{ p.id }}" data-source="catalog_grid">
+    <p class="eyebrow">{{ p.category }} · {{ p.level }}</p>
+    <h3 class="card-title">{{ p.title }}</h3>
+    <p class="muted clamp">{{ p.description }}</p>
+    <p class="mono price">{{ p.price_cents | price }}</p>
+  </a>
+  {% else %}
+  <p class="muted empty-note">No courses match your filters.</p>
+  {% endfor %}
+</div>
+{% endblock %}

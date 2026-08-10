@@ -1,0 +1,19 @@
+{% extends "base.html.j2" %}
+{% block title %}SmartReco — the recommender that shows its work{% endblock %}
+{% block content %}
+<section class="hero">
+  <p class="kicker">Behavioral recommendation engine</p>
+  <h1 class="display">The recommender that <em>shows its work.</em></h1>
+  <p class="lede">It watches what a learner actually does, retrieves real courses, grades its own picks
+    against the evidence — and won&rsquo;t suggest a single thing it can&rsquo;t cite.</p>
+  <div class="cta-row">
+    {% if user %}
+      <a class="btn btn-lg" href="/dashboard">See my recommendations</a>
+    {% else %}
+      <a class="btn btn-lg" href="/register">Get started</a>
+    {% endif %}
+    <a class="btn btn-lg btn-o" href="/catalog">Browse the catalog</a>
+  </div>
+  <p class="mono note">Server-rendered with Jinja2 · behavioral tracking · a LangGraph agent grounded in a real catalog via RAG.</p>
+</section>
+{% endblock %}

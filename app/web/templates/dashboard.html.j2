@@ -1,0 +1,63 @@
+{% extends "base.html.j2" %}
+{% block title %}Your recommendations · SmartReco{% endblock %}
+{% block content %}
+<div class="dash-head">
+  <div>
+    <p class="eyebrow">Your dashboard</p>
+    <h1 class="display">Recommendations, with receipts</h1>
+  </div>
+  <button class="btn btn-o" id="refresh" type="button">Refresh now</button>
+</div>
+
+{% if rec %}
+<aside class="card artifact">
+  <div class="art-top">
+    <span class="eyebrow">Recommendation · {{ user.display_name }}</span>
+    <span class="mono live"><span class="dot"></span>updated</span>
+  </div>
+  <h2 class="display artifact-head">{{ rec.headline }}</h2>
+  <p class="muted narrative">{{ rec.narrative }}</p>
+
+  <div class="recs">
+    {% for it in rec.items %}
+    <div class="rec">
+      <div class="rec-main">
+        <a class="rec-t" href="/product/{{ it.product_id }}" data-track-click="{{ it.product_id }}" data-source="dashboard_card">{{ it.title }}<sup>{{ loop.index }}</sup></a>
+        <div class="tags">
+          {% if it.category %}<span class="tag">{{ it.category }}</span>{% endif %}
+          {% if it.level %}<span class="tag">{{ it.level }}</span>{% endif %}
+        </div>
+      </div>
+      <span class="mono rec-p">{{ it.price_cents | price }}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="fns">
+    {% for it in rec.items %}
+    <p class="fn"><b>{{ loop.index }}</b>&nbsp;&nbsp;grounded in — {{ it.reason }} · id <span class="ok">{{ it.product_id[:8] }}… ✓ in catalog</span></p>
+    {% endfor %}
+  </div>
+</aside>
+{% else %}
+<div class="card empty">
+  <p class="muted">No recommendation yet — browse the catalog for a bit, or generate one now.</p>
+  <button class="btn" id="genfirst" type="button">Generate my first recommendation</button>
+  <p class="small"><a href="/catalog">Browse the catalog</a></p>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  function run(btn) {
+    btn.disabled = true; btn.textContent = 'Generating…';
+    fetch('/api/recommendations/refresh', { method: 'POST', credentials: 'include' })
+      .then(function () { location.reload(); })
+      .catch(function () { btn.disabled = false; btn.textContent = 'Try again'; });
+  }
+  var r = document.getElementById('refresh'); if (r) r.addEventListener('click', function () { run(r); });
+  var g = document.getElementById('genfirst'); if (g) g.addEventListener('click', function () { run(g); });
+})();
+</script>
+{% endblock %}

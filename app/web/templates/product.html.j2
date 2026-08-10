@@ -1,0 +1,40 @@
+{% extends "base.html.j2" %}
+{% block title %}{% if product %}{{ product.title }}{% else %}Not found{% endif %} · SmartReco{% endblock %}
+{% block content %}
+{% if product %}
+<a class="mono back" href="/catalog">← back to catalog</a>
+<div class="detail-head">
+  <div>
+    <p class="eyebrow">{{ product.category }} · {{ product.level }}</p>
+    <h1 class="display">{{ product.title }}</h1>
+  </div>
+  <span class="mono price-lg">{{ product.price_cents | price }}</span>
+</div>
+<p class="muted detail-desc">{{ product.description }}</p>
+{% if product.tags %}
+<div class="tags">{% for t in product.tags %}<span class="tag">{{ t }}</span>{% endfor %}</div>
+{% endif %}
+<div class="cta-row">
+  <button class="btn btn-o" id="interested" type="button" data-track-click="{{ product.id }}" data-source="product_detail">I&rsquo;m interested</button>
+  <button class="btn" id="cart" type="button">Add to cart</button>
+</div>
+{% else %}
+<p class="muted">Course not found. <a href="/catalog">Back to catalog</a></p>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+{% if product %}
+<script>
+(function () {
+  var pid = "{{ product.id }}";
+  var cart = document.getElementById('cart');
+  if (cart) cart.addEventListener('click', function () {
+    if (window.srTrack) window.srTrack('cart', pid, { source: 'product_detail' }); // high-intent
+    cart.textContent = 'Added ✓'; cart.disabled = true;
+  });
+  var intr = document.getElementById('interested');
+  if (intr) intr.addEventListener('click', function () { intr.textContent = 'Interested ✓'; });
+})();
+</script>
+{% endif %}
+{% endblock %}
